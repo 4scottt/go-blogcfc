@@ -18,3 +18,7 @@
 .DS_Store
 .idea/
 .vscode/
+
+# working docs: private, kept in another repo and symlinked here
+/docs/PLAN.md
+/docs/HANDOFF.md
