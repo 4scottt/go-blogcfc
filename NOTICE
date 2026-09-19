@@ -1,0 +1,38 @@
+go-blogcfc
+Copyright 2026 Scott Taylor
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+--------------------------------------------------------------------------
+
+This product is a rewrite in Go of BlogCFC, a ColdFusion blog by
+Raymond Camden (https://github.com/teamcfadvance/BlogCFC5, version
+5.9.8; the reference copy used for this rewrite is the fork at
+https://github.com/4scottt/BlogCFC5, branch oldbox/5.9.8).
+
+BlogCFC is Copyright 2006-2012 Raymond Camden and contributors and is
+licensed under the Apache License, Version 2.0 (its install/readme.md
+carries the license statement).
+
+The following parts of BlogCFC are reproduced or adapted here under
+that license, with attribution:
+
+  - the user-facing strings in its resource bundles
+    (client/includes/main_en_US.properties and the de_* bundles)
+  - the trackback/comment spam term list shipped with its default
+    settings
+  - the semantics of its database schema, permalink grammar, settings
+    keys and RSS output
+
+Nothing from the Arclite theme (GPL) is copied; the look is recreated
+with original CSS.
