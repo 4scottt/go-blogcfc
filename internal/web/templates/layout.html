@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{.BlogTitle}}{{with .AdditionalTitle}} - {{.}}{{end}}</title>
+<meta name="title" content="{{.BlogTitle}}{{with .AdditionalTitle}} - {{.}}{{end}}" />
+<meta name="description" content="{{.Description}}" />
+<meta name="keywords" content="{{.Keywords}}" />
+<link rel="alternate" type="application/rss+xml" title="RSS" href="{{.RSSURL}}" />
+<link rel="stylesheet" type="text/css" href="{{.CSSURL}}" />
+</head>
+<body>
+ <div id="page" class="with-sidebar">
+  <div id="header-wrap">
+   <div id="header" class="block-content">
+    <div id="pagetitle">
+     <h1 class="logo"><a href="{{.HomeURL}}">{{.BlogTitle}}</a></h1>
+     <div class="clear"></div>
+     <div class="search-block">
+      <div class="searchform-wrap">
+       <form method="get" id="searchform" action="{{.SearchURL}}">
+        <fieldset>
+         <input type="text" name="search" id="searchbox" class="searchfield" value="" />
+         <input type="submit" value="Go" class="go" />
+        </fieldset>
+       </form>
+      </div>
+     </div>
+    </div>
+    <div id="nav-wrap1">
+     <div id="nav-wrap2">
+      <ul id="nav">
+       <li><a href="{{.HomeURL}}"><span>Home</span></a></li>
+       <li><a href="{{.ContactURL}}"><span>Contact</span></a></li>
+       <li><a href="{{.SearchURL}}"><span>Search</span></a></li>
+      </ul>
+     </div>
+    </div>
+   </div>
+   <div id="main-wrap1">
+    <div id="main-wrap2">
+     <div id="main" class="block-content">
+      <div class="col1">
+       <div id="main-content">
+{{template "content" .}}
+       </div>
+      </div>
+      <div class="col2">
+       <ul id="sidebar"></ul>
+      </div>
+      <div class="clear-content"></div>
+     </div>
+    </div>
+   </div>
+  </div>
+  <div id="footer">
+   <div class="block-content">
+    <div class="copyright">
+     go-blogcfc {{.Version}}, a rewrite of BlogCFC by Raymond Camden | <a href="{{.RSSURL}}" rel="noindex,nofollow">RSS</a>
+    </div>
+   </div>
+  </div>
+ </div>
+</body>
+</html>

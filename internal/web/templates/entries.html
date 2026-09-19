@@ -1,0 +1,37 @@
+{{define "content"}}
+{{- range .Entries}}
+<div class="post">
+ <div class="post-header">
+  <h3 class="post-title"><a href="{{.URL}}">{{.Title}}</a></h3>
+  <p class="post-date">
+   <span class="month">{{.Month}}</span>
+   <span class="day">{{.Day}}</span>
+  </p>
+  <p class="post-author">
+   <span class="info">posted{{if .Author}} by <a href="{{.AuthorURL}}">{{.Author}}</a>{{end}}{{if .Categories}} in {{range $i, $c := .Categories}}{{if $i}}, {{end}}<a href="{{$c.URL}}">{{$c.Label}}</a>{{end}}{{end}}
+    | <a href="{{.CommentURL}}" class="comments">{{.CommentCount}} Comments</a></span>
+  </p>
+ </div>
+ <div class="post-content clearfix">
+{{.Body}}
+{{- if .HasMore}}
+{{- if $.Single}}
+<a id="more"></a>
+{{.MoreBody}}
+{{- else}}
+  <p class="more"><a href="{{.MoreURL}}">[{{.MoreText}}]</a></p>
+{{- end}}
+{{- end}}
+  <div class="clear"></div>
+  <p class="post-metadata">This entry was posted on {{.PostedDate}} at {{.PostedTime}} and has received {{.Views}} views. There are currently <a href="{{.CommentURL}}">{{.CommentCount}} comments</a>.</p>
+ </div>
+</div>
+{{- end}}
+{{- if .EmptyMessage}}
+<h3>{{.EmptyHeading}}</h3>
+<p>{{.EmptyMessage}}</p>
+{{- end}}
+{{- if or .Prev .Next}}
+<p class="pager">{{with .Prev}}<a href="{{.URL}}">{{.Label}}</a>{{end}}{{if and .Prev .Next}} / {{end}}{{with .Next}}<a href="{{.URL}}">{{.Label}}</a>{{end}}</p>
+{{- end}}
+{{end}}

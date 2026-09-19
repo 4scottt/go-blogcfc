@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,10 +24,13 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
+	"github.com/4scottt/go-blogcfc/internal/admin"
 	"github.com/4scottt/go-blogcfc/internal/app"
+	"github.com/4scottt/go-blogcfc/internal/auth"
 	"github.com/4scottt/go-blogcfc/internal/config"
 	"github.com/4scottt/go-blogcfc/internal/migrate"
 	"github.com/4scottt/go-blogcfc/internal/store"
+	"github.com/4scottt/go-blogcfc/internal/web"
 )
 
 const usage = `usage: go-blogcfc <serve|migrate|seed-admin|healthcheck>`
@@ -184,9 +188,14 @@ func serve() error {
 		return err
 	}
 
+	// Sessions are Secure only behind https: the local walk runs on http.
+	sessions := auth.New(cfg.SessionSecret, strings.HasPrefix(cfg.BlogBaseURL, "https://"), st)
+	adminModule := admin.New(cfg, st, settings, sessions)
+	publicModule := web.New(cfg, st, settings, sessions)
+
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           app.New(cfg, st, settings),
+		Handler:           app.New(cfg, st, settings, publicModule, adminModule),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,
