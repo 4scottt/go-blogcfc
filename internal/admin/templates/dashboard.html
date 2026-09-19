@@ -1,0 +1,18 @@
+{{define "content"}}
+<p id="version">go-blogcfc {{.Page.Version}}</p>
+<p>This blog is named {{.BlogTitle}}. It is a Go rewrite of BlogCFC by Raymond Camden.</p>
+
+<h2>Top entries, last 7 days</h2>
+<table id="topentries" class="datatable">
+	<thead>
+		<tr><th>Title</th><th>Views</th></tr>
+	</thead>
+	<tbody>
+	{{range .Page.TopEntries}}
+		<tr><td>{{.Title}}</td><td>{{.Views}}</td></tr>
+	{{else}}
+		<tr><td colspan="2">No entries in the last 7 days.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+{{end}}

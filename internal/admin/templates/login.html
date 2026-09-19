@@ -1,0 +1,22 @@
+{{define "content"}}
+<div id="login">
+	{{with .Page}}{{if .Message}}<p class="error">{{.Message}}</p>{{end}}{{end}}
+	<form id="loginform" method="post" action="/admin/login">
+		<input type="hidden" name="return" value="{{with .Page}}{{.Return}}{{end}}">
+		<table id="logintable">
+			<tr>
+				<td><label for="username">Username</label></td>
+				<td><input type="text" id="username" name="username" size="30" autocomplete="username" autofocus></td>
+			</tr>
+			<tr>
+				<td><label for="password">Password</label></td>
+				<td><input type="password" id="password" name="password" size="30" autocomplete="current-password"></td>
+			</tr>
+			<tr>
+				<td></td>
+				<td><input type="submit" name="login" value="Login"></td>
+			</tr>
+		</table>
+	</form>
+</div>
+{{end}}

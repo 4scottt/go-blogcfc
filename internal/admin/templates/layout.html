@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>go-blogcfc Administrator {{.BlogTitle}}: {{.Title}}</title>
+<link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body id="adminBody">
+{{if .Menu}}
+<div id="menu">
+	<ul>
+	{{range .Menu}}
+		{{if and (eq (len .Links) 1) (eq (index .Links 0).Label .Label)}}
+		<li class="menu-item"><a href="{{(index .Links 0).Href}}">{{.Label}}</a></li>
+		{{else}}
+		<li class="menu-group">
+			<span class="menu-label">{{.Label}}</span>
+			<ul>
+			{{range .Links}}
+				<li><a href="{{.Href}}">{{.Label}}</a></li>
+			{{end}}
+			</ul>
+		</li>
+		{{end}}
+	{{end}}
+	</ul>
+	<ul id="menu-extra">
+		<li><a href="/">View blog</a></li>
+	</ul>
+</div>
+{{end}}
+<div id="content">
+	<div id="blogTitle">{{.BlogTitle}}</div>
+	<div id="header"><h1>{{.Title}}</h1></div>
+	{{if .User}}<p id="whoami">Signed in as {{.User.Username}}</p>{{end}}
+	{{if .Flash}}<div class="banner">{{.Flash}}</div>{{end}}
+	{{template "content" .}}
+</div>
+</body>
+</html>
