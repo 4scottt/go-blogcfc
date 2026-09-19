@@ -25,3 +25,6 @@
 
 # local dev data directory (scripts/dev.sh)
 /.data/
+
+# the walk's local playwright install
+/scripts/.walk/

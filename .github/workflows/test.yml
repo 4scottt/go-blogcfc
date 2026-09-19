@@ -1,0 +1,68 @@
+# go vet and go test against a real MariaDB (the plan's one-dialect rule),
+# then the image build and the headless acceptance walk against it.
+name: test
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: goblogcfcroot
+          MARIADB_DATABASE: goblogcfc
+          MARIADB_USER: goblogcfc
+          MARIADB_PASSWORD: goblogcfc
+        ports: ["3307:3306"]
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      TEST_DSN: goblogcfc:goblogcfc@tcp(127.0.0.1:3307)/goblogcfc?parseTime=true&loc=UTC&multiStatements=true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test -count=1 ./...
+
+  walk:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build the image
+        run: docker build -f deploy/Dockerfile -t go-blogcfc:ci .
+      - name: start the stack
+        run: |
+          docker compose -f deploy/compose.yaml --profile app up -d
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8081/health && break
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8081/health
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: playwright
+        run: |
+          npm --prefix scripts/.walk install --no-save playwright@1
+          npx --prefix scripts/.walk playwright install --with-deps chromium
+      - name: walk
+        env:
+          WALK_URL: http://127.0.0.1:8081
+          ADMIN_PASSWORD: admin
+          WALK_BROWSER: chromium
+        run: node scripts/walk.mjs
+      - name: app logs
+        if: always()
+        run: docker compose -f deploy/compose.yaml --profile app logs app | tail -100
