@@ -22,3 +22,6 @@
 # working docs: private, kept in another repo and symlinked here
 /docs/PLAN.md
 /docs/HANDOFF.md
+
+# local dev data directory (scripts/dev.sh)
+/.data/
