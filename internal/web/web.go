@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/4scottt/go-blogcfc/internal/auth"
 	"github.com/4scottt/go-blogcfc/internal/cache"
 	"github.com/4scottt/go-blogcfc/internal/config"
 	"github.com/4scottt/go-blogcfc/internal/i18n"
@@ -144,7 +145,7 @@ func (m *Module) currentUser(r *http.Request) *store.User {
 func (m *Module) adminView(r *http.Request) bool {
 	switch strings.ToLower(strings.TrimSpace(r.URL.Query().Get("adminview"))) {
 	case "1", "true", "yes":
-		return m.currentUser(r) != nil
+		return auth.HasRole(m.currentUser(r), auth.RoleAdmin)
 	default:
 		return false
 	}

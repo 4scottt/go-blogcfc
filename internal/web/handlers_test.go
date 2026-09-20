@@ -96,7 +96,7 @@ func TestFP_P02_DraftsAndFutureHiddenAndAdminviewShowsDrafts(t *testing.T) {
 	})
 
 	t.Run("logged in", func(t *testing.T) {
-		s := newTestSite(t, fakeIdentity{user: &store.User{Username: "ray", Name: "Raymond Camden"}})
+		s := newTestSite(t, fakeIdentity{user: &store.User{Username: "ray", Name: "Raymond Camden", Roles: []store.Role{{ID: 1, Role: "Admin"}}}})
 		seed(s)
 
 		// Without adminview the logged-in admin sees the public blog.
@@ -115,6 +115,16 @@ func TestFP_P02_DraftsAndFutureHiddenAndAdminviewShowsDrafts(t *testing.T) {
 		}
 		if code := s.get("/2026/3/3/draft?adminview=1").Code; code != http.StatusOK {
 			t.Errorf("draft permalink with adminview = %d, want 200", code)
+		}
+	})
+
+	t.Run("logged in without the Admin role", func(t *testing.T) {
+		// getmode.cfm asked for the admin role, not just a login (repo #4).
+		s := newTestSite(t, fakeIdentity{user: &store.User{Username: "ray", Name: "Raymond Camden", Roles: []store.Role{{ID: 2, Role: "AddCategory"}}}})
+		seed(s)
+		page := s.getOK("/?adminview=1")
+		if strings.Contains(page, ">Draft<") || strings.Contains(page, ">Future<") {
+			t.Error("?adminview=1 shows drafts to a user without the Admin role")
 		}
 	})
 }
