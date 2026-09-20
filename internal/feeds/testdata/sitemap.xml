@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.google.com/schemas/sitemap/0.84"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.google.com/schemas/sitemap/0.84
+	http://www.google.com/schemas/sitemap/0.84/sitemap.xsd">
+	<url>
+		<loc>http://blog.example/</loc>
+		<lastmod>2026-07-04T11:00:00-07:00</lastmod>
+		<changefreq>hourly</changefreq>
+		<priority>0.8</priority>
+	</url>
+	<url>
+		<loc>http://blog.example/2026/7/4/summer-entry</loc>
+		<lastmod>2026-07-04T11:00:00-07:00</lastmod>
+	</url>
+	<url>
+		<loc>http://blog.example/?mode=entry&amp;entry=11111111-2222-4333-8444-555555555555</loc>
+		<lastmod>2026-05-05T09:00:00-07:00</lastmod>
+	</url>
+	<url>
+		<loc>http://blog.example/2026/2/28/winter-entry</loc>
+		<lastmod>2026-02-28T23:30:00-08:00</lastmod>
+	</url>
+	<url>
+		<loc>http://blog.example/page/about</loc>
+		<priority>0.5</priority>
+		<changefreq>weekly</changefreq>
+		<lastmod>2026-07-04T11:00:00-07:00</lastmod>
+	</url>
+	<url>
+		<loc>http://blog.example/page/contact%20details</loc>
+		<priority>0.5</priority>
+		<changefreq>weekly</changefreq>
+		<lastmod>2026-07-04T11:00:00-07:00</lastmod>
+	</url>
+</urlset>

@@ -16,6 +16,7 @@ import (
 
 	"github.com/4scottt/go-blogcfc/internal/config"
 	"github.com/4scottt/go-blogcfc/internal/i18n"
+	"github.com/4scottt/go-blogcfc/internal/mail"
 	"github.com/4scottt/go-blogcfc/internal/store"
 )
 
@@ -43,6 +44,9 @@ type Module struct {
 	// from the pods package; while it is nil the layout leaves ul#sidebar
 	// empty, which is what M1 and the tests want (PLAN §9 D01-D10).
 	Sidebar func(r *http.Request) template.HTML
+	// Mail is how contact, send and the subscribe pod send; main.go sets it
+	// (a log sender until SMTP lands with M3). Nil means sending fails.
+	Mail mail.Sender
 
 	cfg      *config.Config
 	store    *store.Store
