@@ -1,0 +1,53 @@
+{{define "content"}}
+<style>
+td.comment-excerpt { max-width: 34em; }
+td.entry-title { max-width: 22em; }
+</style>
+
+<p id="moderatecount">
+	Your blog currently has {{.Page.Total}} {{if eq .Page.Total 1}}comment{{else}}comments{{end}} to moderate.
+</p>
+
+<form id="moderatelist" method="post" action="/admin/moderate/delete">
+<table id="moderate" class="datatable">
+	<thead>
+		<tr>
+			<th><input type="checkbox" id="markall" name="markall"></th>
+			<th>Entry</th>
+			<th>Name</th>
+			<th>Email</th>
+			<th>Posted</th>
+			<th>Comment</th>
+			<th>Approve Comment</th>
+		</tr>
+	</thead>
+	<tbody>
+	{{range .Page.Rows}}
+		<tr>
+			<td><input type="checkbox" name="mark" value="{{.ID}}"></td>
+			<td class="entry-title"><a href="{{.EntryURL}}">{{.EntryTitle}}</a></td>
+			<td><a href="/admin/comments/{{.ID}}">{{.Name}}</a></td>
+			<td>{{.Email}}</td>
+			<td>{{.Posted}}</td>
+			<td class="comment-excerpt"><a href="/admin/comments/{{.ID}}">{{.Excerpt}}</a></td>
+			<td><a href="/admin/moderate?approve={{.ID}}">Approve</a></td>
+		</tr>
+	{{else}}
+		<tr><td colspan="7">Nothing is waiting to be moderated.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+<p><input type="submit" name="delete" value="Delete Marked"></p>
+</form>
+
+<script>
+(function () {
+	var all = document.getElementById("markall");
+	if (!all) return;
+	all.addEventListener("change", function () {
+		var boxes = document.querySelectorAll("#moderatelist input[name=mark]");
+		for (var i = 0; i < boxes.length; i++) boxes[i].checked = all.checked;
+	});
+})();
+</script>
+{{end}}

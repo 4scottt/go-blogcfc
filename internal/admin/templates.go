@@ -63,7 +63,9 @@ func (m *Module) newPageData(r *http.Request, title string) pageData {
 		User:      u,
 		Settings:  m.settings,
 		BlogTitle: m.settings.BlogTitle(),
-		Menu:      menuFor(u),
+		// The menu is built per render, so the moderation count beside
+		// Moderate is the live one (PLAN §9 A14).
+		Menu: m.menuFor(r.Context(), u),
 	}
 }
 

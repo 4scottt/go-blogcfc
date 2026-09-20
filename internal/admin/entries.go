@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -488,6 +489,11 @@ func (m *Module) entrySave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// The release hook is told what the stored flag was before this save,
+	// so it can tell a first release from a re-save. Read it now: e and
+	// existing are the same pointer below.
+	releasedBefore := existing != nil && existing.Released
+
 	e := &store.Entry{Username: u.Username, AllowComments: p.AllowComments, SendEmail: p.SendEmail}
 	if existing != nil {
 		e = existing
@@ -523,6 +529,13 @@ func (m *Module) entrySave(w http.ResponseWriter, r *http.Request) {
 	if err := m.store.SetEntryCategories(ctx, e.ID, catIDs); err != nil {
 		m.serverError(w, r, err)
 		return
+	}
+	// Release side effects (subscriber mail, pings) run once the entry is
+	// whole, categories included (PLAN §11). They are best effort: the
+	// entry is saved either way, and a failed mail must not tell the
+	// author their save did not happen.
+	if err := m.release(ctx, e, releasedBefore); err != nil {
+		slog.Error("admin: release hook", "entry", e.ID, "released_before", releasedBefore, "error", err)
 	}
 	m.reinit()
 	http.Redirect(w, r, "/admin/entries?saved=1", http.StatusFound)

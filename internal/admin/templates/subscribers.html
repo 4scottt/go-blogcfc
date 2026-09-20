@@ -1,0 +1,52 @@
+{{define "content"}}
+<style>
+/* The per-row forms sit inside their cells, so they lose the block
+   form's bottom margin. */
+table.datatable form { display: inline; margin: 0; }
+.note { color: #7b6d55; }
+</style>
+
+<p id="subscribercount">
+	Your blog currently has
+	{{.Page.Total}} {{if eq .Page.Total 1}}subscriber{{else}}subscribers{{end}}, {{.Page.Verified}} verified.
+</p>
+
+<p class="note">
+	Remove Unverified deletes every address that never confirmed, including
+	one that subscribed a minute ago. Use it rarely.
+</p>
+
+<form id="nukeform" method="post" action="/admin/subscribers">
+	<input type="submit" name="nukeunverified" value="Remove Unverified">
+</form>
+
+<table id="subscribers" class="datatable">
+	<thead>
+		<tr><th>Email</th><th>Verified</th><th>Verify</th><th>Delete</th></tr>
+	</thead>
+	<tbody>
+	{{range .Page.Rows}}
+		<tr>
+			<td>{{.Email}}</td>
+			<td>{{if .Verified}}Yes{{else}}No{{end}}</td>
+			<td>
+				<form method="post" action="/admin/subscribers">
+					<input type="hidden" name="email" value="{{.Email}}">
+					<input type="submit" name="verify" value="Verify">
+				</form>
+			</td>
+			<td>
+				<form method="post" action="/admin/subscribers">
+					<input type="hidden" name="email" value="{{.Email}}">
+					<input type="submit" name="delete" value="Delete">
+				</form>
+			</td>
+		</tr>
+	{{else}}
+		<tr><td colspan="4">No subscribers.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+
+<p><a href="/admin/subscribers/mail">Mail Subscribers</a></p>
+{{end}}

@@ -1,0 +1,72 @@
+{{define "content"}}
+<style>
+/* The comment tables' own rules. They live here rather than in admin.css
+   because that file is the frame's; issue #6 lifts them. */
+td.comment-excerpt { max-width: 34em; }
+td.entry-title { max-width: 22em; }
+.note { color: #7b6d55; }
+</style>
+
+<p id="commentcount">
+	{{if .Page.Search}}Your filtered search returned{{else}}Your blog currently has{{end}}
+	{{.Page.Total}} {{if eq .Page.Total 1}}comment{{else}}comments{{end}}.
+</p>
+
+<form id="commentfilter" method="get" action="/admin/comments">
+	<label for="search">Search</label>
+	<input type="text" id="search" name="search" value="{{.Page.Search}}" maxlength="100">
+	<input type="submit" name="filter" value="Filter by Keyword">
+</form>
+
+<form id="commentlist" method="post" action="/admin/comments/delete">
+<table id="comments" class="datatable">
+	<thead>
+		<tr>
+			<th><input type="checkbox" id="markall" name="markall"></th>
+			<th>Entry</th>
+			<th>Name</th>
+			<th>Email</th>
+			<th>Posted</th>
+			<th>Comment</th>
+			<th>Moderated</th>
+		</tr>
+	</thead>
+	<tbody>
+	{{range .Page.Rows}}
+		<tr>
+			<td><input type="checkbox" name="mark" value="{{.ID}}"></td>
+			<td class="entry-title"><a href="{{.EntryURL}}">{{.EntryTitle}}</a></td>
+			<td><a href="/admin/comments/{{.ID}}">{{.Name}}</a></td>
+			<td>{{.Email}}</td>
+			<td>{{.Posted}}</td>
+			<td class="comment-excerpt"><a href="/admin/comments/{{.ID}}">{{.Excerpt}}</a></td>
+			<td>{{if .Moderated}}Yes{{else}}No{{end}}</td>
+		</tr>
+	{{else}}
+		<tr><td colspan="7">No comments.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+<p><input type="submit" name="delete" value="Delete Marked"></p>
+</form>
+
+{{if gt .Page.Pages 1}}
+<p id="paging">
+	{{if .Page.PrevLink}}<a id="prevpage" href="{{.Page.PrevLink}}">Previous</a>{{end}}
+	Page {{.Page.Page}} of {{.Page.Pages}}
+	{{if .Page.NextLink}}<a id="nextpage" href="{{.Page.NextLink}}">Next</a>{{end}}
+</p>
+{{end}}
+
+<script>
+// Select-all for the bulk form, as the entries list has (PLAN §12).
+(function () {
+	var all = document.getElementById("markall");
+	if (!all) return;
+	all.addEventListener("change", function () {
+		var boxes = document.querySelectorAll("#commentlist input[name=mark]");
+		for (var i = 0; i < boxes.length; i++) boxes[i].checked = all.checked;
+	});
+})();
+</script>
+{{end}}

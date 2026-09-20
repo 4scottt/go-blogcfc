@@ -39,5 +39,25 @@ func (m *Module) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /admin/categories/{id}", m.sessions.RequireRole(auth.RoleManageCategories, http.HandlerFunc(m.categorySave)))
 	mux.Handle("POST /admin/categories/{id}/delete", m.sessions.RequireRole(auth.RoleManageCategories, http.HandlerFunc(m.categoryDelete)))
 
+	// Comments: the searchable list, the bulk delete and the editor,
+	// whose Approve button re-notifies (PLAN §9 A13, C12).
+	mux.Handle("GET /admin/comments", m.sessions.RequireLogin(http.HandlerFunc(m.commentsList)))
+	mux.Handle("POST /admin/comments/delete", m.sessions.RequireLogin(http.HandlerFunc(m.commentsDelete)))
+	mux.Handle("GET /admin/comments/{id}", m.sessions.RequireLogin(http.HandlerFunc(m.commentForm)))
+	mux.Handle("POST /admin/comments/{id}", m.sessions.RequireLogin(http.HandlerFunc(m.commentSave)))
+
+	// The moderation queue (PLAN §9 A14).
+	mux.Handle("GET /admin/moderate", m.sessions.RequireLogin(http.HandlerFunc(m.moderateQueue)))
+	mux.Handle("POST /admin/moderate/delete", m.sessions.RequireLogin(http.HandlerFunc(m.moderateDelete)))
+
+	// Subscribers: one POST handler for the four buttons the screen
+	// carries, as the as-is page had (PLAN §9 A15), and the broadcast
+	// form (A16). The literal /mail wins over nothing here: the list is
+	// not a {id} route.
+	mux.Handle("GET /admin/subscribers", m.sessions.RequireLogin(http.HandlerFunc(m.subscribersList)))
+	mux.Handle("POST /admin/subscribers", m.sessions.RequireLogin(http.HandlerFunc(m.subscribersAction)))
+	mux.Handle("GET /admin/subscribers/mail", m.sessions.RequireLogin(http.HandlerFunc(m.mailSubscribersForm)))
+	mux.Handle("POST /admin/subscribers/mail", m.sessions.RequireLogin(http.HandlerFunc(m.mailSubscribersSend)))
+
 	mux.Handle("GET /admin/", m.sessions.RequireLogin(http.HandlerFunc(m.notFound)))
 }

@@ -1,0 +1,64 @@
+{{define "content"}}
+<style>
+.errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.errors ul { margin: 6px 0 0; }
+a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; border-radius: 3px; background: #ece7d6; color: #241c14; }
+#mailtable td { padding: 4px 6px; vertical-align: top; }
+#mailtable textarea { width: 40em; height: 12em; }
+.note { color: #7b6d55; }
+</style>
+
+{{if .Page.Done}}
+
+<p id="mailsent">
+	Your message was sent to {{.Page.Sent}} {{if eq .Page.Sent 1}}subscriber{{else}}subscribers{{end}}.
+</p>
+<p><a class="button" href="/admin/subscribers">Back to Subscribers</a></p>
+
+{{else}}
+
+<p id="verifiedcount">
+	Your blog currently has {{.Page.Verified}} verified
+	{{if eq .Page.Verified 1}}subscriber{{else}}subscribers{{end}}.
+	Each one gets their own copy with an unsubscribe link appended. HTML is allowed.
+</p>
+
+{{if .Page.Errors}}
+<div class="errors">
+	<p>Please correct the following:</p>
+	<ul>{{range .Page.Errors}}<li>{{.}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+{{if eq .Page.Verified 0}}
+<p class="note">
+	Since you have no verified subscribers, there is nobody to send a message to.
+</p>
+{{end}}
+
+<form id="mailForm" method="post" action="/admin/subscribers/mail">
+	<table id="mailtable">
+		<tr>
+			<td><label for="subject">Subject</label></td>
+			<td><input type="text" id="subject" name="subject" value="{{.Page.Subject}}" maxlength="255" size="60"></td>
+		</tr>
+		<tr>
+			<td><label for="body">Body</label></td>
+			<td><textarea id="body" name="body">{{.Page.Body}}</textarea></td>
+		</tr>
+		<tr>
+			<td><label for="html">Send as HTML</label></td>
+			<td><input type="checkbox" id="html" name="html" value="yes"{{if .Page.HTML}} checked{{end}}></td>
+		</tr>
+		<tr>
+			<td></td>
+			<td>
+				<a class="button" id="cancel" href="/admin/subscribers">Cancel</a>
+				<input type="submit" name="send" value="Send">
+			</td>
+		</tr>
+	</table>
+</form>
+
+{{end}}
+{{end}}

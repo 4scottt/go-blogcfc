@@ -1,6 +1,10 @@
 package admin
 
 import (
+	"context"
+	"log/slog"
+	"strconv"
+
 	"github.com/4scottt/go-blogcfc/internal/auth"
 	"github.com/4scottt/go-blogcfc/internal/store"
 )
@@ -57,8 +61,39 @@ var menuGroups = []MenuGroup{
 	}},
 }
 
-// menuFor returns the menu as this user may see it: a link whose role the
-// user lacks is left out, and an emptied group with it.
+// moderateHref is the link whose label carries the moderation count.
+const moderateHref = "/admin/moderate"
+
+// menuFor returns the menu as this user may see it, with the moderation
+// queue's length in its label — "Moderate (3)", as the as-is menu read
+// "Moderate Comments (3)" (client/tags/adminlayout.cfm). The count is one
+// small query per admin page render, which is what the as-is did too; a
+// failed count drops the number rather than the page.
+func (m *Module) menuFor(ctx context.Context, u *store.User) []MenuGroup {
+	if u == nil {
+		// The login page and the signed-out 403 have no menu, and no
+		// business running a query.
+		return nil
+	}
+	groups := menuFor(u)
+	n, err := m.store.CountUnmoderated(ctx)
+	if err != nil {
+		slog.Error("admin: count unmoderated comments", "error", err)
+		return groups
+	}
+	for gi, g := range groups {
+		for li, l := range g.Links {
+			if l.Href == moderateHref {
+				groups[gi].Links[li].Label = l.Label + " (" + strconv.Itoa(n) + ")"
+			}
+		}
+	}
+	return groups
+}
+
+// menuFor is the role filter on its own: a link whose role the user
+// lacks is left out, and an emptied group with it. The result is a fresh
+// slice each time, so the caller may relabel a link.
 func menuFor(u *store.User) []MenuGroup {
 	if u == nil {
 		return nil

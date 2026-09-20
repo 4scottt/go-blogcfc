@@ -6,11 +6,13 @@
 package admin
 
 import (
+	"context"
 	"net/http"
 	"time"
 
 	"github.com/4scottt/go-blogcfc/internal/auth"
 	"github.com/4scottt/go-blogcfc/internal/config"
+	"github.com/4scottt/go-blogcfc/internal/mail"
 	"github.com/4scottt/go-blogcfc/internal/store"
 )
 
@@ -40,6 +42,24 @@ type Module struct {
 	// caches it flushes arrive with the render package, so this stays a
 	// hook and a nil Reinit is a no-op (PLAN §9 A29).
 	Reinit func()
+
+	// Release is called right after an entry is saved, with the entry's
+	// stored Released flag from *before* that save (false for a new
+	// entry). Mailing the subscribers, the scheduled-release sweep and
+	// the pings are the release package's business, not the editor's
+	// (PLAN §11 "Release side effects"); the editor only says what
+	// happened.
+	Release func(ctx context.Context, e *store.Entry, releasedBefore bool) error
+
+	// Notify sends a comment notification. adminOnly true is the held
+	// comment's case, where only the owner hears about it; false sends
+	// the thread's subscribers their copy, which is what approving a
+	// held comment does (PLAN §9 C10, C12). It returns the number of
+	// recipients.
+	Notify func(ctx context.Context, e *store.Entry, c *store.Comment, adminOnly bool) (int, error)
+
+	// Mail is how the admin's own broadcast goes out (PLAN §9 A16).
+	Mail mail.Sender
 }
 
 // New builds the module. It also gives the session manager the admin's
@@ -55,4 +75,21 @@ func (m *Module) reinit() {
 	if m.Reinit != nil {
 		m.Reinit()
 	}
+}
+
+// release runs the release hook when one is set. A nil hook is a blog
+// that does not mail or ping, which is how the admin tests run.
+func (m *Module) release(ctx context.Context, e *store.Entry, releasedBefore bool) error {
+	if m.Release == nil {
+		return nil
+	}
+	return m.Release(ctx, e, releasedBefore)
+}
+
+// notify runs the notification hook when one is set.
+func (m *Module) notify(ctx context.Context, e *store.Entry, c *store.Comment, adminOnly bool) (int, error) {
+	if m.Notify == nil {
+		return 0, nil
+	}
+	return m.Notify(ctx, e, c, adminOnly)
 }
