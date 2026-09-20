@@ -1,0 +1,30 @@
+{{define "content"}}
+<p id="pagecount">
+	Your blog currently has {{len .Page.Rows}} {{if eq (len .Page.Rows) 1}}page{{else}}pages{{end}}.
+</p>
+
+<p><a id="addpage" href="/admin/pages/new">Add Page</a></p>
+
+<table id="pages" class="datatable">
+	<thead>
+		<tr><th>Title</th><th>Alias</th><th>URL</th><th>Layout</th><th>Delete</th></tr>
+	</thead>
+	<tbody>
+	{{range .Page.Rows}}
+		<tr>
+			<td><a href="/admin/pages/{{.ID}}">{{.Title}}</a></td>
+			<td>{{.Alias}}</td>
+			<td><a href="{{.URL}}">{{.URL}}</a></td>
+			<td>{{if .ShowLayout}}Yes{{else}}No{{end}}</td>
+			<td>
+				<form method="post" action="/admin/pages/{{.ID}}/delete">
+					<input type="submit" name="delete" value="Delete">
+				</form>
+			</td>
+		</tr>
+	{{else}}
+		<tr><td colspan="5">No pages.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+{{end}}

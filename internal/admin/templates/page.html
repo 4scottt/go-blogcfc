@@ -1,0 +1,73 @@
+{{define "content"}}
+<style>
+.errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.errors ul { margin: 6px 0 0; }
+a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; border-radius: 3px; background: #ece7d6; color: #241c14; }
+.note { color: #7b6d55; }
+</style>
+
+{{if .Page.Errors}}
+<div class="errors">
+	<p>Please correct the following:</p>
+	<ul>{{range .Page.Errors}}<li>{{.}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+<p class="note">
+	A page is a piece of the blog that is not an entry: it lives at
+	<code>/page/{alias}</code>. Leave the alias blank and one is made from the title.
+	A page with the layout switched off is served plain, with no blog around it and
+	without its title. You can pull a textblock in with
+	<code>&lt;textblock label="..."&gt;</code>.
+</p>
+
+<form id="pageForm" method="post" action="{{.Page.Action}}">
+	<table id="pagetable">
+		<tr>
+			<td><label for="title">Title</label></td>
+			<td><input type="text" id="title" name="title" value="{{.Page.Title}}" maxlength="255" size="50"></td>
+		</tr>
+		<tr>
+			<td><label for="alias">Alias</label></td>
+			<td><input type="text" id="alias" name="alias" value="{{.Page.Alias}}" maxlength="100" size="50"></td>
+		</tr>
+		{{if .Page.URL}}
+		<tr>
+			<td>URL</td>
+			<td><a id="pageurl" href="{{.Page.URL}}">{{.Page.URL}}</a></td>
+		</tr>
+		{{end}}
+		<tr>
+			<td><label for="body">Body</label></td>
+			<td><textarea id="body" name="body" rows="18" cols="80">{{.Page.Body}}</textarea></td>
+		</tr>
+		<tr>
+			<td><label for="showlayout">Show layout</label></td>
+			<td><input type="checkbox" id="showlayout" name="showlayout" value="1"{{if .Page.ShowLayout}} checked{{end}}></td>
+		</tr>
+		<tr>
+			<td><label for="categories">Categories</label></td>
+			<td>
+				<select id="categories" name="categories" multiple size="6">
+				{{range .Page.Categories}}
+					<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>
+				{{end}}
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<td></td>
+			<td>
+				<a class="button" id="cancel" href="/admin/pages">Cancel</a>
+				<input type="submit" name="save" value="Save">
+			</td>
+		</tr>
+	</table>
+</form>
+
+{{if .Page.DeleteURL}}
+<form id="pageDeleteForm" method="post" action="{{.Page.DeleteURL}}">
+	<input type="submit" name="delete" value="Delete">
+</form>
+{{end}}
+{{end}}

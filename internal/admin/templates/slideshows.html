@@ -1,0 +1,53 @@
+{{define "content"}}
+<style>
+.errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.errors ul { margin: 6px 0 0; }
+.note { color: #7b6d55; }
+</style>
+
+{{if .Page.Errors}}
+<div class="errors">
+	<p>Please correct the following:</p>
+	<ul>{{range .Page.Errors}}<li>{{.}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+<p id="slideshowcount">
+	Your blog currently has {{len .Page.Rows}} {{if eq (len .Page.Rows) 1}}slideshow{{else}}slideshows{{end}}.
+</p>
+
+<p class="note">
+	A slideshow is a directory of pictures the blog shows one at a time at
+	<code>/slideshow/{name}</code>. Names are letters, numbers, hyphens and
+	underscores; they are part of the URL.
+</p>
+
+<form id="addSlideshowForm" method="post" action="/admin/slideshows">
+	<label for="name">Name</label>
+	<input type="text" id="name" name="name" value="{{.Page.Name}}" maxlength="50" size="30">
+	<input type="submit" name="add" value="Add Slideshow">
+</form>
+
+<table id="slideshows" class="datatable">
+	<thead>
+		<tr><th>Name</th><th>Descriptive name</th><th class="number">Pictures</th><th>View</th><th>Delete</th></tr>
+	</thead>
+	<tbody>
+	{{range .Page.Rows}}
+		<tr>
+			<td><a href="/admin/slideshows/{{.Name}}">{{.Name}}</a></td>
+			<td>{{.FormalName}}</td>
+			<td class="number">{{.Pictures}}</td>
+			<td><a href="{{.ViewURL}}">View</a></td>
+			<td>
+				<form method="post" action="/admin/slideshows/{{.Name}}/delete">
+					<input type="submit" name="delete" value="Delete Slideshow">
+				</form>
+			</td>
+		</tr>
+	{{else}}
+		<tr><td colspan="5">No slideshows.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+{{end}}

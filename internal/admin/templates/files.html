@@ -1,0 +1,68 @@
+{{define "content"}}
+<style>
+.errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.errors ul { margin: 6px 0 0; }
+.note { color: #7b6d55; }
+#files form { display: inline; }
+</style>
+
+{{if .Page.Errors}}
+<div class="errors">
+	<p>Please correct the following:</p>
+	<ul>{{range .Page.Errors}}<li>{{.}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+<p class="note">
+	These are the blog's own files: the enclosures the feeds link to and the images
+	the entry editor inserts. Nothing outside the data directory is reachable from
+	here, and a delete is final.
+</p>
+
+<p id="currentdir">
+	Current directory: <code>/{{.Page.Dir}}</code>
+	{{if .Page.ParentURL}}<a id="updir" href="{{.Page.ParentURL}}">Go up one directory</a>{{end}}
+</p>
+
+<table id="files" class="datatable">
+	<thead>
+		<tr><th>Name</th><th class="number">Bytes</th><th>Modified</th><th>Download</th><th>Delete</th></tr>
+	</thead>
+	<tbody>
+	{{range .Page.Rows}}
+		<tr>
+			<td>{{if .IsDir}}<a href="{{.DirURL}}">{{.Name}}/</a>{{else}}{{.Name}}{{end}}</td>
+			<td class="number">{{if .IsDir}}&nbsp;{{else}}{{.Size}}{{end}}</td>
+			<td>{{.Modified.Format "2006-01-02 15:04"}}</td>
+			<td>
+				{{if not .IsDir}}
+				<form method="get" action="/admin/files/download">
+					<input type="hidden" name="dir" value="{{$.Page.Dir}}">
+					<input type="hidden" name="file" value="{{.Name}}">
+					<input type="submit" name="download" value="Download">
+				</form>
+				{{end}}
+			</td>
+			<td>
+				{{if not .IsDir}}
+				<form method="post" action="/admin/files/delete">
+					<input type="hidden" name="dir" value="{{$.Page.Dir}}">
+					<input type="hidden" name="file" value="{{.Name}}">
+					<input type="submit" name="delete" value="Delete">
+				</form>
+				{{end}}
+			</td>
+		</tr>
+	{{else}}
+		<tr><td colspan="5">This directory is empty.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+
+<form id="uploadFileForm" method="post" action="/admin/files/upload" enctype="multipart/form-data">
+	<input type="hidden" name="dir" value="{{.Page.Dir}}">
+	<label for="file">Add a file</label>
+	<input type="file" id="file" name="file">
+	<input type="submit" name="upload" value="Upload File">
+</form>
+{{end}}

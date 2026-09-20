@@ -1,0 +1,47 @@
+{{define "content"}}
+<style>
+.errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.errors ul { margin: 6px 0 0; }
+a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; border-radius: 3px; background: #ece7d6; color: #241c14; }
+.note { color: #7b6d55; }
+</style>
+
+{{if .Page.Errors}}
+<div class="errors">
+	<p>Please correct the following:</p>
+	<ul>{{range .Page.Errors}}<li>{{.}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+<p class="note">
+	A textblock is a named block of text you can drop into an entry or a page with
+	<code>&lt;textblock label="..."&gt;</code>. The label is how a body names it, so it
+	has to be unique.
+</p>
+
+<form id="textblockForm" method="post" action="{{.Page.Action}}">
+	<table id="textblocktable">
+		<tr>
+			<td><label for="label">Label</label></td>
+			<td><input type="text" id="label" name="label" value="{{.Page.Label}}" maxlength="255" size="50"></td>
+		</tr>
+		<tr>
+			<td><label for="body">Body</label></td>
+			<td><textarea id="body" name="body" rows="14" cols="80">{{.Page.Body}}</textarea></td>
+		</tr>
+		<tr>
+			<td></td>
+			<td>
+				<a class="button" id="cancel" href="/admin/textblocks">Cancel</a>
+				<input type="submit" name="save" value="Save">
+			</td>
+		</tr>
+	</table>
+</form>
+
+{{if .Page.DeleteURL}}
+<form id="textblockDeleteForm" method="post" action="{{.Page.DeleteURL}}">
+	<input type="submit" name="delete" value="Delete">
+</form>
+{{end}}
+{{end}}

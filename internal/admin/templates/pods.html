@@ -1,0 +1,46 @@
+{{define "content"}}
+<style>
+.errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.errors ul { margin: 6px 0 0; }
+.note { color: #7b6d55; }
+</style>
+
+{{if .Page.Errors}}
+<div class="errors">
+	<p>Please correct the following:</p>
+	<ul>{{range .Page.Errors}}<li>{{.}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+<p class="note">
+	The pod manager says which of the blog's widgets the sidebar shows and in what
+	order. Tick a pod to show it and give it a number; the sidebar draws them
+	lowest number first.
+	{{if .Page.Defaulted}}Nothing has been saved yet, so these are the defaults.{{end}}
+</p>
+
+{{if .Page.Dropped}}
+<p class="note" id="droppedpods">
+	The stored setting also named {{range .Page.Dropped}}<code>{{.}}</code> {{end}}, which
+	is not one of this blog's pods. Saving drops it.
+</p>
+{{end}}
+
+<form id="podsForm" method="post" action="/admin/pods">
+	<table id="pods" class="datatable">
+		<thead>
+			<tr><th>Show</th><th>Pod</th><th>Sort order</th></tr>
+		</thead>
+		<tbody>
+		{{range .Page.Rows}}
+			<tr>
+				<td><input type="checkbox" id="show_{{.Name}}" name="show_{{.Name}}" value="1"{{if .Show}} checked{{end}}></td>
+				<td><label for="show_{{.Name}}">{{.Label}}</label></td>
+				<td><input type="number" id="order_{{.Name}}" name="order_{{.Name}}" value="{{.Order}}" min="0" size="3"></td>
+			</tr>
+		{{end}}
+		</tbody>
+	</table>
+	<p><input type="submit" name="save" value="Save"></p>
+</form>
+{{end}}

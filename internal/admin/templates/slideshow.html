@@ -1,0 +1,72 @@
+{{define "content"}}
+<style>
+.errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.errors ul { margin: 6px 0 0; }
+a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; border-radius: 3px; background: #ece7d6; color: #241c14; }
+.note { color: #7b6d55; }
+.thumb { max-width: 80px; max-height: 80px; }
+</style>
+
+{{if .Page.Errors}}
+<div class="errors">
+	<p>Please correct the following:</p>
+	<ul>{{range .Page.Errors}}<li>{{.}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+<p class="note">
+	This slideshow is <a id="slideshowurl" href="{{.Page.ViewURL}}">{{.Page.ViewURL}}</a>.
+	The descriptive name is what the public page calls it. Renaming it changes the URL.
+</p>
+
+<form id="renameSlideshowForm" method="post" action="/admin/slideshows/{{.Page.Name}}/rename">
+	<table id="slideshowtable">
+		<tr>
+			<td><label for="newname">Name</label></td>
+			<td><input type="text" id="newname" name="newname" value="{{.Page.Name}}" maxlength="50" size="30"></td>
+		</tr>
+		<tr>
+			<td><label for="formalname">Descriptive name</label></td>
+			<td><input type="text" id="formalname" name="formalname" value="{{.Page.FormalName}}" maxlength="100" size="50"></td>
+		</tr>
+		<tr>
+			<td></td>
+			<td>
+				<a class="button" id="cancel" href="/admin/slideshows">Cancel</a>
+				<input type="submit" name="rename" value="Rename">
+			</td>
+		</tr>
+	</table>
+</form>
+
+<h2>Pictures</h2>
+
+<table id="slideshowimages" class="datatable">
+	<thead>
+		<tr><th>Picture</th><th>Name</th><th>Caption</th><th>Delete</th></tr>
+	</thead>
+	<tbody>
+	{{range .Page.Images}}
+		<tr>
+			<td><a href="{{.URL}}"><img class="thumb" src="{{.URL}}" alt="{{.Name}}"></a></td>
+			<td>{{.Name}}</td>
+			<td>{{.Caption}}</td>
+			<td>
+				<form method="post" action="/admin/slideshows/{{$.Page.Name}}/images/delete">
+					<input type="hidden" name="image" value="{{.Name}}">
+					<input type="submit" name="deleteimage" value="Delete">
+				</form>
+			</td>
+		</tr>
+	{{else}}
+		<tr><td colspan="4">No pictures yet.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+
+<form id="uploadImageForm" method="post" action="/admin/slideshows/{{.Page.Name}}/upload" enctype="multipart/form-data">
+	<label for="image">Add a picture</label>
+	<input type="file" id="image" name="image" accept="image/gif,image/jpeg,image/png">
+	<input type="submit" name="upload" value="Upload">
+</form>
+{{end}}

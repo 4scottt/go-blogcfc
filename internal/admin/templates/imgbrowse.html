@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>go-blogcfc Administrator: Image Browser</title>
+<link rel="stylesheet" href="/static/css/admin.css">
+<style>
+body#popUpFormBody { margin: 0; padding: 16px; background: #f4f2ea; color: #241c14;
+	font: 13px/1.5 "Lucida Grande", "Lucida Sans Unicode", Calibri, Arial, sans-serif; }
+.errors { margin: 0 0 12px; padding: 8px 12px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+table { border-collapse: collapse; width: 100%; }
+td, th { padding: 6px 8px; border-bottom: 1px solid #d8d2c0; text-align: left; }
+img.thumb { max-width: 60px; max-height: 60px; }
+</style>
+</head>
+<body id="popUpFormBody">
+<h1>Image Browser</h1>
+
+{{if .Error}}<div class="errors" id="browseerror">{{.Error}}</div>{{end}}
+
+<table id="images">
+	<thead>
+		<tr><th>Picture</th><th>Name</th><th class="number">Bytes</th><th>Insert</th></tr>
+	</thead>
+	<tbody>
+	{{range .Images}}
+		<tr>
+			<td><a href="{{.URL}}" target="_blank" rel="noopener"><img class="thumb" src="{{.URL}}" alt="{{.Name}}"></a></td>
+			<td>{{.Name}}</td>
+			<td class="number">{{.Size}}</td>
+			<td><a class="insert" href="{{.URL}}" data-tag="{{.Tag}}">Insert</a></td>
+		</tr>
+	{{else}}
+		<tr><td colspan="4">No images have been uploaded yet.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+
+<p><a href="/admin/images/upload">Upload Image</a></p>
+
+<script>
+// insertTag drops the tag into the entry editor's body textarea in the
+// window that opened this one (PLAN §12). Without an opener the links
+// are ordinary links to the picture, so the page works on its own.
+function insertTag(tag) {
+	try {
+		var opener = window.opener;
+		if (!opener || opener.closed) { return false; }
+		var doc = opener.document;
+		var box = doc.getElementById("body");
+		if (!box && doc.forms.length) { box = doc.forms[0].body; }
+		if (!box) { return false; }
+		box.value = box.value + tag;
+		return true;
+	} catch (e) {
+		return false;
+	}
+}
+
+var links = document.querySelectorAll("a.insert");
+for (var i = 0; i < links.length; i++) {
+	links[i].addEventListener("click", function (event) {
+		if (insertTag(this.getAttribute("data-tag"))) {
+			event.preventDefault();
+			window.close();
+		}
+	});
+}
+</script>
+</body>
+</html>

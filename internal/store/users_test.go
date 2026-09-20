@@ -20,8 +20,8 @@ func TestUserCRUDAndRolesRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListRoles: %v", err)
 	}
-	if len(roles) != 5 {
-		t.Fatalf("roles = %d, want the five seeds", len(roles))
+	if len(roles) != 6 {
+		t.Fatalf("roles = %d, want the five installer seeds plus PageAdmin", len(roles))
 	}
 	byName := map[string]int{}
 	for _, r := range roles {

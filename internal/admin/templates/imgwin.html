@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>go-blogcfc Administrator: Upload Image</title>
+<link rel="stylesheet" href="/static/css/admin.css">
+<style>
+body#popUpFormBody { margin: 0; padding: 16px; background: #f4f2ea; color: #241c14;
+	font: 13px/1.5 "Lucida Grande", "Lucida Sans Unicode", Calibri, Arial, sans-serif; }
+.errors { margin: 0 0 12px; padding: 8px 12px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.done { margin: 0 0 12px; padding: 8px 12px; border: 1px solid #5a7d2a; border-left-width: 5px; background: #eef5e2; }
+code { word-break: break-all; }
+</style>
+</head>
+<body id="popUpFormBody">
+<h1>Upload Image</h1>
+
+{{if .Error}}<div class="errors" id="uploaderror">{{.Error}}</div>{{end}}
+
+{{if .Tag}}
+<div class="done" id="uploaded">
+	<p><b>{{.Name}}</b> was uploaded.</p>
+	<p><code id="imgtag">{{.Tag}}</code></p>
+	<p><input type="text" id="tagtext" name="tag" value="{{.Tag}}" size="60" readonly></p>
+	<p><img src="{{.URL}}" alt="{{.Name}}" style="max-width:100%"></p>
+</div>
+{{end}}
+
+<form id="imageUploadForm" method="post" action="/admin/images/upload" enctype="multipart/form-data">
+	<p>
+		<label for="image">Picture (GIF, JPEG or PNG)</label>
+		<input type="file" id="image" name="image" accept="image/gif,image/jpeg,image/png">
+	</p>
+	<p><input type="submit" name="upload" value="Upload Image"></p>
+</form>
+
+<script>
+// insertTag drops the tag into the entry editor's body textarea in the
+// window that opened this one, and says whether it managed to (PLAN §12:
+// the popup is also a page, so a failure here is not an error).
+function insertTag(tag) {
+	try {
+		var opener = window.opener;
+		if (!opener || opener.closed) { return false; }
+		var doc = opener.document;
+		var box = doc.getElementById("body");
+		if (!box && doc.forms.length) { box = doc.forms[0].body; }
+		if (!box) { return false; }
+		box.value = box.value + tag;
+		return true;
+	} catch (e) {
+		return false;
+	}
+}
+{{if .Tag}}
+if (insertTag({{.Tag}})) {
+	window.close();
+}
+{{end}}
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{{define "content"}}
+<p id="textblockcount">
+	Your blog currently has {{len .Page.Rows}} {{if eq (len .Page.Rows) 1}}textblock{{else}}textblocks{{end}}.
+</p>
+
+<p><a id="addtextblock" href="/admin/textblocks/new">Add Textblock</a></p>
+
+<table id="textblocks" class="datatable">
+	<thead>
+		<tr><th>Label</th><th>Body</th><th>Delete</th></tr>
+	</thead>
+	<tbody>
+	{{range .Page.Rows}}
+		<tr>
+			<td><a href="/admin/textblocks/{{.ID}}">{{.Label}}</a></td>
+			<td>{{.Excerpt}}</td>
+			<td>
+				<form method="post" action="/admin/textblocks/{{.ID}}/delete">
+					<input type="submit" name="delete" value="Delete">
+				</form>
+			</td>
+		</tr>
+	{{else}}
+		<tr><td colspan="3">No textblocks.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+{{end}}
