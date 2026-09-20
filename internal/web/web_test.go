@@ -37,6 +37,9 @@ type testSite struct {
 	store    *store.Store
 	settings *config.Settings
 	handler  http.Handler
+	// module is the site itself, for the few tests that need to reach
+	// past HTTP -- signing a visitor cookie by hand, for one.
+	module *Module
 }
 
 // newTestSite builds the module against a real MariaDB (testdb) with the
@@ -50,8 +53,9 @@ func newTestSite(t *testing.T, identity Identity) *testSite {
 		t.Fatalf("settings reload: %v", err)
 	}
 	mux := http.NewServeMux()
-	New(cfg, st, settings, identity).Routes(mux)
-	return &testSite{t: t, store: st, settings: settings, handler: mux}
+	m := New(cfg, st, settings, identity)
+	m.Routes(mux)
+	return &testSite{t: t, store: st, settings: settings, handler: mux, module: m}
 }
 
 // get runs one GET through the mux.
@@ -120,6 +124,101 @@ func (s *testSite) user(username, name string) *store.User {
 	return u
 }
 
+// comment inserts one comment through the store. It is moderated unless
+// the caller says otherwise, which is what a blog without moderation
+// stores (PLAN §11, "Comment pipeline").
+func (s *testSite) comment(c store.Comment) store.Comment {
+	s.t.Helper()
+	if err := s.store.CreateComment(context.Background(), &c); err != nil {
+		s.t.Fatalf("create comment %q: %v", c.Name, err)
+	}
+	return c
+}
+
+// page inserts one static page (PLAN §9 P17).
+func (s *testSite) page(p store.Page) store.Page {
+	s.t.Helper()
+	if err := s.store.CreatePage(context.Background(), &p); err != nil {
+		s.t.Fatalf("create page %q: %v", p.Title, err)
+	}
+	return p
+}
+
+// relate points one entry at others; the store reads the link in both
+// directions (PLAN §9 P13).
+func (s *testSite) relate(entryID string, ids ...string) {
+	s.t.Helper()
+	if err := s.store.SetRelatedEntries(context.Background(), entryID, ids); err != nil {
+		s.t.Fatalf("set related entries: %v", err)
+	}
+}
+
+// views reads an entry's stored view count.
+func (s *testSite) views(id string) int {
+	s.t.Helper()
+	e, err := s.store.GetEntry(context.Background(), id)
+	if err != nil {
+		s.t.Fatalf("get entry %s: %v", id, err)
+	}
+	return e.Views
+}
+
+// visitor is one browser: it carries the cookies the site sets from one
+// request to the next, which is how P12's "once per visitor" is watched.
+type visitor struct {
+	site    *testSite
+	cookies []*http.Cookie
+}
+
+// visitor returns a fresh browser with no cookies.
+func (s *testSite) visitor() *visitor { return &visitor{site: s} }
+
+// get runs one GET carrying whatever cookies the site has set so far, and
+// keeps the ones it sets.
+func (v *visitor) get(path string) *httptest.ResponseRecorder {
+	v.site.t.Helper()
+	r := httptest.NewRequest(http.MethodGet, path, nil)
+	for _, c := range v.cookies {
+		r.AddCookie(c)
+	}
+	rec := httptest.NewRecorder()
+	v.site.handler.ServeHTTP(rec, r)
+	for _, set := range rec.Result().Cookies() {
+		v.set(set)
+	}
+	return rec
+}
+
+// seenCookie signs a set of entry ids into the visitor cookie the view
+// counter reads (PLAN §9 P12).
+func (s *testSite) seenCookie(ids []string) *http.Cookie {
+	s.t.Helper()
+	raw := strings.Join(ids, ",")
+	return &http.Cookie{Name: seenCookie, Value: raw + "|" + s.module.signSeen(raw)}
+}
+
+// cookieRequest is a bare request carrying cookies, for the tests that
+// read a cookie back without going through a handler.
+func cookieRequest(cookies []*http.Cookie) *http.Request {
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	for _, c := range cookies {
+		r.AddCookie(c)
+	}
+	return r
+}
+
+// set stores a cookie, replacing the one of the same name as a browser
+// does rather than keeping both.
+func (v *visitor) set(c *http.Cookie) {
+	for i, have := range v.cookies {
+		if have.Name == c.Name {
+			v.cookies[i] = c
+			return
+		}
+	}
+	v.cookies = append(v.cookies, c)
+}
+
 // utc is a fixture time in UTC, seconds precision.
 func utc(y int, mo time.Month, d, h, mi int) time.Time {
 	return time.Date(y, mo, d, h, mi, 0, 0, time.UTC)
@@ -137,6 +236,13 @@ var (
 	headerBlock   = regexp.MustCompile(`(?s)<div class="post-header">.*?</div>`)
 	metadataBlock = regexp.MustCompile(`(?s)<p class="post-metadata">.*?</p>`)
 	headBlock     = regexp.MustCompile(`(?s)<head>.*?</head>`)
+	// The single-entry view's own blocks (P13, P14): the related list and
+	// the comment list with the heading above it.
+	relatedBlock  = regexp.MustCompile(`(?s)<div id="relatedentries">.*?\n</div>`)
+	commentsBlock = regexp.MustCompile(`(?s)<a name="comments"></a>.*?\n</ul>`)
+	// The print view's article: the whole of #blogText, which is the
+	// title, the byline and the body (P18).
+	printBlock = regexp.MustCompile(`(?s)<div id="blogText">.*?\n   </div>`)
 )
 
 // postTitles returns the entry titles a page lists, in order.

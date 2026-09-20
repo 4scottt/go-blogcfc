@@ -1,8 +1,11 @@
 package web
 
 import (
+	"context"
+	"crypto/md5"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -273,10 +276,13 @@ func TestFP_P06_CategoryByAliasAndByCatidList(t *testing.T) {
 	if got := postTitles(mixed); len(got) != 1 || got[0] != "CF Entry" {
 		t.Errorf("a mixed catid list showed %v", got)
 	}
+	// The reserved segments here are the ones no route in this module
+	// claims yet; /search, /contact and the rest answer for themselves as
+	// their packages land, and none of them is ever a category lookup.
 	for _, path := range []string{
 		"/?mode=cat&catid=66666666-6666-4666-8666-666666666666",
 		"/no-such-category",
-		"/search", "/rss", "/admin", "/contact", "/sitemap.xml", "/robots.txt",
+		"/rss", "/admin", "/sitemap.xml", "/robots.txt",
 	} {
 		if code := s.get(path).Code; code != http.StatusNotFound {
 			t.Errorf("GET %s = %d, want 404", path, code)
@@ -376,12 +382,14 @@ func TestFP_P09_MoreLinkInListsFullBodyOnEntry(t *testing.T) {
 	cat := s.category("11111111-1111-4111-8111-111111111111", "ColdFusion", "coldfusion")
 	e := s.entry(store.Entry{
 		ID: "88888888-8888-4888-8888-888888888888", Title: "Split Entry", Alias: "split-entry",
-		Body: "<p>The first half.</p>", MoreBody: "<p>The second half.</p>",
+		Body: "The first half.", MoreBody: "The second half.",
 		Posted: utc(2026, 3, 5, 14, 30), Username: "ray", Released: true, Views: 42,
 	})
 	s.categorise(e.ID, cat.ID)
 	permalink := testBase + "/2026/3/5/split-entry"
 
+	// The paragraphs are render.Entry's: the editor stores what the
+	// author typed and the pipeline wraps it (PLAN §9 R03).
 	list := s.getOK("/")
 	if !strings.Contains(list, "<p>The first half.</p>") {
 		t.Error("the list view does not show the body")
@@ -403,9 +411,415 @@ func TestFP_P09_MoreLinkInListsFullBodyOnEntry(t *testing.T) {
 	checkGolden(t, "entry_block.html", postBlock.FindString(entry))
 
 	// An entry without a morebody gets no link at all.
-	s.entry(store.Entry{Title: "Whole", Alias: "whole", Body: "<p>All of it.</p>",
+	s.entry(store.Entry{Title: "Whole", Alias: "whole", Body: "All of it.",
 		Posted: utc(2026, 3, 6, 9, 0), Username: "ray", Released: true})
 	if n := strings.Count(s.getOK("/"), ">[More]<"); n != 1 {
 		t.Errorf("the home page has %d [more] links, want 1", n)
+	}
+}
+
+// TestFP_P12_ViewsCountedOncePerVisitorNeverOnPrint is P12: the single
+// entry view adds one view per visitor per entry -- BlogCFC's
+// session.viewedpages, here a signed cookie -- and no other view counts.
+func TestFP_P12_ViewsCountedOncePerVisitorNeverOnPrint(t *testing.T) {
+	s := newTestSite(t, nil)
+	s.user("ray", "Raymond Camden")
+	e := s.entry(store.Entry{
+		ID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", Title: "Counted", Alias: "counted",
+		Posted: utc(2026, 5, 1, 9, 0), Username: "ray", Released: true,
+	})
+	permalink := "/2026/5/1/counted"
+
+	// A listing never counts.
+	s.getOK("/")
+	if got := s.views(e.ID); got != 0 {
+		t.Fatalf("the home page counted %d views, want 0", got)
+	}
+
+	first := s.visitor()
+	if rec := first.get(permalink); rec.Code != http.StatusOK {
+		t.Fatalf("GET %s = %d", permalink, rec.Code)
+	}
+	if got := s.views(e.ID); got != 1 {
+		t.Fatalf("after one visit views = %d, want 1", got)
+	}
+
+	// The same visitor, twice more, by both URL forms: still one.
+	first.get(permalink)
+	first.get("/?mode=entry&entry=" + e.ID)
+	if got := s.views(e.ID); got != 1 {
+		t.Errorf("the same visitor counted %d views, want 1", got)
+	}
+
+	// A second browser is a second visitor.
+	second := s.visitor()
+	second.get(permalink)
+	if got := s.views(e.ID); got != 2 {
+		t.Errorf("after a second visitor views = %d, want 2", got)
+	}
+
+	// The print view never counts, however often it is asked for.
+	third := s.visitor()
+	if rec := third.get("/print/" + e.ID); rec.Code != http.StatusOK {
+		t.Fatalf("GET /print/%s = %d", e.ID, rec.Code)
+	}
+	third.get("/print/" + e.ID)
+	if got := s.views(e.ID); got != 2 {
+		t.Errorf("the print view counted: views = %d, want 2", got)
+	}
+
+	// A forged cookie is not a visitor who has been here: the signature
+	// fails, the set is read as empty, and the view counts.
+	forger := s.visitor()
+	forger.cookies = []*http.Cookie{{Name: seenCookie, Value: e.ID + "|deadbeef"}}
+	forger.get(permalink)
+	if got := s.views(e.ID); got != 3 {
+		t.Errorf("a tampered cookie suppressed the count: views = %d, want 3", got)
+	}
+
+	// The footer prints the count this visit found, as index.cfm did:
+	// the read happens before the increment. This visitor has already
+	// been counted, so the page only reports.
+	meta := metadataBlock.FindString(first.get(permalink).Body.String())
+	if !strings.Contains(meta, "has received 3 views") {
+		t.Errorf("the footer does not show the view count:\n%s", meta)
+	}
+
+	// The set is capped: a visitor who has read seenMax other entries
+	// counts this one and drops the oldest id off the front, so the
+	// cookie never grows without bound (PLAN §11, "Views").
+	full := make([]string, seenMax)
+	for i := range full {
+		full[i] = fmt.Sprintf("old-entry-%03d", i)
+	}
+	capped := s.visitor()
+	capped.cookies = []*http.Cookie{s.seenCookie(full)}
+	capped.get(permalink)
+	if got := s.views(e.ID); got != 4 {
+		t.Errorf("a full cookie suppressed the count: views = %d, want 4", got)
+	}
+	after := s.module.readSeen(cookieRequest(capped.cookies))
+	if len(after) != seenMax {
+		t.Errorf("the seen set holds %d ids, want the cap of %d", len(after), seenMax)
+	}
+	if len(after) == seenMax && (after[0] != full[1] || after[seenMax-1] != e.ID) {
+		t.Errorf("the cap dropped the wrong end: first %q, last %q", after[0], after[seenMax-1])
+	}
+}
+
+// TestFP_P13_RelatedEntriesBidirectionalLiveOnly is P13: the related
+// entries block reads the link in both directions, shows live entries
+// only, and is absent when nothing is related.
+func TestFP_P13_RelatedEntriesBidirectionalLiveOnly(t *testing.T) {
+	s := newTestSite(t, nil)
+	s.user("ray", "Raymond Camden")
+	one := s.entry(store.Entry{
+		ID: "b1111111-1111-4111-8111-111111111111", Title: "One", Alias: "one",
+		Posted: utc(2026, 5, 2, 9, 0), Username: "ray", Released: true,
+	})
+	two := s.entry(store.Entry{
+		ID: "b2222222-2222-4222-8222-222222222222", Title: "Two", Alias: "two",
+		Posted: utc(2026, 5, 3, 9, 0), Username: "ray", Released: true,
+	})
+	draft := s.entry(store.Entry{
+		ID: "b3333333-3333-4333-8333-333333333333", Title: "Draft", Alias: "draft",
+		Posted: utc(2026, 5, 4, 9, 0), Username: "ray", Released: false,
+	})
+	future := s.entry(store.Entry{
+		ID: "b4444444-4444-4444-8444-444444444444", Title: "Future", Alias: "future",
+		Posted: time.Now().UTC().AddDate(0, 0, 7), Username: "ray", Released: true,
+	})
+	lonely := s.entry(store.Entry{
+		ID: "b5555555-5555-4555-8555-555555555555", Title: "Lonely", Alias: "lonely",
+		Posted: utc(2026, 5, 5, 9, 0), Username: "ray", Released: true,
+	})
+	// One names the other three; nobody names One.
+	s.relate(one.ID, two.ID, draft.ID, future.ID)
+
+	// The entry that does the naming sees the live one only.
+	block := relatedBlock.FindString(s.getOK("/2026/5/2/one"))
+	if block == "" {
+		t.Fatal("no related entries block on the naming entry")
+	}
+	if !strings.Contains(block, `<div class="relatedentriesHeader">Related Blog Entries</div>`) {
+		t.Errorf("the related block has no header:\n%s", block)
+	}
+	if !strings.Contains(block, `<a href="`+testBase+`/2026/5/3/two">Two</a>`) {
+		t.Errorf("the related block does not link the related entry:\n%s", block)
+	}
+	for _, hidden := range []string{"Draft", "Future"} {
+		if strings.Contains(block, hidden) {
+			t.Errorf("the related block shows %s, which is not live:\n%s", hidden, block)
+		}
+	}
+
+	// The entry that was named sees it too: the link reads both ways.
+	back := relatedBlock.FindString(s.getOK("/2026/5/3/two"))
+	if !strings.Contains(back, `<a href="`+testBase+`/2026/5/2/one">One</a>`) {
+		t.Errorf("the related block is not bidirectional:\n%s", back)
+	}
+
+	// Nothing related, no block at all.
+	if got := relatedBlock.FindString(s.getOK("/2026/5/5/lonely")); got != "" {
+		t.Errorf("an entry with nothing related still has a block:\n%s", got)
+	}
+	_ = lonely
+}
+
+// TestFP_P14_CommentsListGravatarParagraphsLinks is P14: the comment list
+// under an entry -- the anchor and heading, one li.comment per moderated
+// comment with its Gravatar, the "said on" line, and a body whose line
+// breaks survive, whose URLs are links and whose markup is escaped.
+func TestFP_P14_CommentsListGravatarParagraphsLinks(t *testing.T) {
+	s := newTestSite(t, nil)
+	s.user("ray", "Raymond Camden")
+	e := s.entry(store.Entry{
+		ID: "c0000000-0000-4000-8000-000000000000", Title: "Talkative", Alias: "talkative",
+		Posted: utc(2026, 5, 6, 9, 0), Username: "ray", Released: true, AllowComments: true,
+	})
+	s.comment(store.Comment{
+		ID: "c1111111-1111-4111-8111-111111111111", EntryID: e.ID,
+		Name: "Pete F", Email: "Pete@Example.COM", Website: "http://pete.example/blog",
+		Comment:   "First line.\nSecond line.\n\nSee http://www.coldfusionjedi.com/index.cfm for more.",
+		Posted:    utc(2026, 5, 6, 10, 15),
+		Moderated: true,
+	})
+	s.comment(store.Comment{
+		ID: "c2222222-2222-4222-8222-222222222222", EntryID: e.ID,
+		Name: "Scripty", Email: "scripty@example.com", Website: "javascript:alert(1)",
+		Comment:   "<script>alert('x')</script> & then some.",
+		Posted:    utc(2026, 5, 6, 11, 0),
+		Moderated: true,
+	})
+	s.comment(store.Comment{
+		ID: "c3333333-3333-4333-8333-333333333333", EntryID: e.ID,
+		Name: "Held", Email: "held@example.com", Comment: "Waiting for approval.",
+		Posted: utc(2026, 5, 6, 12, 0), Moderated: false,
+	})
+	// A subscription is not a comment and never shows.
+	s.comment(store.Comment{
+		ID: "c4444444-4444-4444-8444-444444444444", EntryID: e.ID,
+		Name: "Subscriber", Email: "sub@example.com", Comment: "",
+		Posted: utc(2026, 5, 6, 13, 0), Moderated: true, SubscribeOnly: true, Subscribe: true,
+	})
+
+	body := s.getOK("/2026/5/6/talkative")
+	block := commentsBlock.FindString(body)
+	if block == "" {
+		t.Fatalf("no comment list on the entry page:\n%s", body)
+	}
+	permalink := testBase + "/2026/5/6/talkative"
+	for _, want := range []string{
+		`<a name="comments"></a>`,
+		`<h3 class="commentHeader">Comments (2)</h3>`,
+		`<li class="comment" id="cc1111111-1111-4111-8111-111111111111">`,
+		`<a class="comment-id" href="` + permalink + `#cc1111111-1111-4111-8111-111111111111">#1</a>`,
+		`<a href="http://pete.example/blog" rel="nofollow">Pete F</a>`,
+		`said on May 6, 2026 at 10:15 AM`,
+		`First line.<br />Second line.<br /><br />See `,
+		`<a href="http://www.coldfusionjedi.com/index.cfm" rel="nofollow noopener" target="_blank">`,
+		`<li class="comment commentAlt" id="cc2222222-2222-4222-8222-222222222222">`,
+		`&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt; &amp; then some.`,
+	} {
+		if !strings.Contains(block, want) {
+			t.Errorf("the comment list is missing %q:\n%s", want, block)
+		}
+	}
+	// An unmoderated comment and a subscription row never appear, and the
+	// count over the list counts neither.
+	for _, hidden := range []string{"Waiting for approval", "Subscriber"} {
+		if strings.Contains(block, hidden) {
+			t.Errorf("the comment list shows %q:\n%s", hidden, block)
+		}
+	}
+	// A website that is not http(s) is dropped rather than linked.
+	if strings.Contains(block, "javascript:") {
+		t.Errorf("a javascript: website was linked:\n%s", block)
+	}
+	// The count also reaches the header anchor and the footer line.
+	if !strings.Contains(body, `class="comments">2 Comments</a>`) {
+		t.Error("the entry header does not show the real comment count")
+	}
+	if !strings.Contains(body, "There are currently 2 comments.") {
+		t.Error("the entry footer does not show the real comment count")
+	}
+
+	// Gravatars are on in the seeded settings: md5 of the trimmed,
+	// lowercased address, size 64, with the blog's own default image.
+	gravatar := `https://www.gravatar.com/avatar/` +
+		fmt.Sprintf("%x", md5.Sum([]byte("pete@example.com"))) +
+		`?s=64&amp;r=pg&amp;d=` + url.QueryEscape(testBase+"/static/images/gravatar.gif")
+	if !strings.Contains(block, gravatar) {
+		t.Errorf("the comment list is missing the Gravatar %q:\n%s", gravatar, block)
+	}
+	checkGolden(t, "comments_list.html", block)
+
+	// Turned off, no avatar is emitted at all.
+	s.setSetting("allowgravatars", "no")
+	if off := commentsBlock.FindString(s.getOK("/2026/5/6/talkative")); strings.Contains(off, "gravatar.com") {
+		t.Errorf("gravatars are off but an avatar was rendered:\n%s", off)
+	}
+}
+
+// TestFP_P15_CommentsNotAllowedMessage is P15: an entry that disallows
+// comments shows the bundle's string where the add-comment link goes.
+func TestFP_P15_CommentsNotAllowedMessage(t *testing.T) {
+	s := newTestSite(t, nil)
+	s.user("ray", "Raymond Camden")
+	open := s.entry(store.Entry{
+		ID: "d1111111-1111-4111-8111-111111111111", Title: "Open", Alias: "open",
+		Posted: utc(2026, 5, 7, 9, 0), Username: "ray", Released: true, AllowComments: true,
+	})
+	closed := s.entry(store.Entry{
+		ID: "d2222222-2222-4222-8222-222222222222", Title: "Closed", Alias: "closed",
+		Posted: utc(2026, 5, 8, 9, 0), Username: "ray", Released: true, AllowComments: false,
+	})
+
+	onOpen := s.getOK("/2026/5/7/open")
+	if !strings.Contains(onOpen, `<a href="`+testBase+`/comments/add/`+open.ID+`">Add Comment</a>`) {
+		t.Error("an entry that allows comments has no add-comment link")
+	}
+	if strings.Contains(onOpen, "Comments are not allowed") {
+		t.Error("an entry that allows comments says they are not allowed")
+	}
+
+	onClosed := s.getOK("/2026/5/8/closed")
+	if !strings.Contains(onClosed, `<div class="commentsnotallowed">Comments are not allowed for this entry.</div>`) {
+		t.Error("an entry that disallows comments is missing the message")
+	}
+	if strings.Contains(onClosed, "/comments/add/"+closed.ID) {
+		t.Error("an entry that disallows comments still offers the form")
+	}
+}
+
+// TestFP_P16_EmptyStates is P16: "no entries" on an empty blog, "no
+// entries for your criteria" on a listing that has a filter but no rows.
+func TestFP_P16_EmptyStates(t *testing.T) {
+	const (
+		noEntries   = "There are no blog entries available."
+		noForCriter = "There are no blog entries available that match your criteria."
+	)
+	s := newTestSite(t, nil)
+
+	home := s.getOK("/")
+	if !strings.Contains(home, "<h3>Sorry</h3>") {
+		t.Error("the empty home page has no Sorry heading")
+	}
+	if !strings.Contains(home, noEntries) {
+		t.Errorf("the empty home page does not say %q", noEntries)
+	}
+	if strings.Contains(home, noForCriter) {
+		t.Error("the empty home page blames the visitor's criteria")
+	}
+
+	// A category that exists and has nothing in it, and an archive month
+	// with nothing in it: both are valid, both are empty.
+	s.category("11111111-1111-4111-8111-111111111111", "ColdFusion", "coldfusion")
+	for _, path := range []string{"/coldfusion", "/2026/5", "/2026/5/9"} {
+		body := s.getOK(path)
+		if !strings.Contains(body, noForCriter) {
+			t.Errorf("GET %s does not say %q", path, noForCriter)
+		}
+		if strings.Contains(body, "<p>"+noEntries+"</p>") {
+			t.Errorf("GET %s uses the empty-blog string", path)
+		}
+	}
+}
+
+// TestFP_P17_StaticPageWithAndWithoutLayoutUnknownRedirects is P17:
+// /page/{alias} inside the layout when the page says so, bare when it
+// does not, and home when the alias is nobody's.
+func TestFP_P17_StaticPageWithAndWithoutLayoutUnknownRedirects(t *testing.T) {
+	s := newTestSite(t, nil)
+	if err := s.store.CreateTextblock(context.Background(),
+		&store.Textblock{Label: "greeting", Body: "Hello from a textblock."}); err != nil {
+		t.Fatalf("create textblock: %v", err)
+	}
+	s.page(store.Page{
+		ID: "e1111111-1111-4111-8111-111111111111", Title: "About Me", Alias: "about",
+		Body: "First paragraph.\n\n<textblock label=\"greeting\">", ShowLayout: true,
+	})
+	s.page(store.Page{
+		ID: "e2222222-2222-4222-8222-222222222222", Title: "Bare", Alias: "bare",
+		Body: "Nothing around me.", ShowLayout: false,
+	})
+
+	withLayout := s.getOK("/page/about")
+	for _, want := range []string{
+		`<div id="page" class="with-sidebar">`,
+		`<title>BlogCFC - About Me</title>`,
+		`<div class="date"><b>About Me</b></div>`,
+		`<p>First paragraph.</p>`,
+		`Hello from a textblock.`,
+	} {
+		if !strings.Contains(withLayout, want) {
+			t.Errorf("the page with a layout is missing %q", want)
+		}
+	}
+
+	bare := s.getOK("/page/bare")
+	if strings.Contains(bare, "<html") || strings.Contains(bare, `id="sidebar"`) {
+		t.Errorf("the page without a layout brought one along:\n%s", bare)
+	}
+	if strings.TrimSpace(bare) != "<p>Nothing around me.</p>" {
+		t.Errorf("the bare page = %q, want the rendered body alone", bare)
+	}
+
+	for _, path := range []string{"/page/nosuchpage", "/page/"} {
+		rec := s.get(path)
+		if rec.Code != http.StatusFound {
+			t.Errorf("GET %s = %d, want 302", path, rec.Code)
+		}
+		if got := rec.Header().Get("Location"); got != testBase+"/" {
+			t.Errorf("GET %s redirected to %q, want the blog's home", path, got)
+		}
+	}
+}
+
+// TestFP_P18_PrintViewRendersBodyAndCode is P18: the print view prints
+// the title, the byline, body and morebody, with code blocks escaped into
+// pre.codePrint; it counts no view and 404s on an id nobody has.
+func TestFP_P18_PrintViewRendersBodyAndCode(t *testing.T) {
+	s := newTestSite(t, nil)
+	s.user("ray", "Raymond Camden")
+	cat := s.category("11111111-1111-4111-8111-111111111111", "ColdFusion", "coldfusion")
+	e := s.entry(store.Entry{
+		ID: "f1111111-1111-4111-8111-111111111111", Title: "Printable", Alias: "printable",
+		Body:     "Before the code.\n\n<code><cfset x = 1></code>",
+		MoreBody: "After the jump.",
+		Posted:   utc(2026, 5, 10, 14, 30), Username: "ray", Released: true, Views: 5,
+	})
+	s.categorise(e.ID, cat.ID)
+
+	rec := s.get("/print/" + e.ID)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /print/%s = %d, want 200", e.ID, rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		`<title>BlogCFC: Printable</title>`,
+		`<h1>Printable</h1>`,
+		`Posted At : May 10, 2026 at 2:30 PM`,
+		`Posted By : ray`,
+		`Related Categories: ColdFusion`,
+		`<p>Before the code.</p>`,
+		`<pre class="codePrint">&lt;cfset x = 1&gt;</pre>`,
+		`<p>After the jump.</p>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the print view is missing %q:\n%s", want, body)
+		}
+	}
+	// No layout, no sidebar, no navigation: print.cfm had none of it.
+	if strings.Contains(body, `id="sidebar"`) || strings.Contains(body, `id="nav"`) {
+		t.Errorf("the print view brought the layout along:\n%s", body)
+	}
+	if got := s.views(e.ID); got != 5 {
+		t.Errorf("the print view counted a view: %d, want 5", got)
+	}
+	checkGolden(t, "print_entry.html", printBlock.FindString(body))
+
+	if rec := s.get("/print/f9999999-9999-4999-8999-999999999999"); rec.Code != http.StatusNotFound {
+		t.Errorf("GET /print/{unknown} = %d, want 404", rec.Code)
 	}
 }

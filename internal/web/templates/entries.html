@@ -31,6 +31,38 @@
   </p>
  </div>
 </div>
+{{- if $.Single}}
+{{- if .Related}}
+<div id="relatedentries">
+ <div class="relatedentriesHeader">{{.RelatedHeader}}</div>
+ <ul id="relatedEntriesList">
+{{- range .Related}}
+  <li><a href="{{.URL}}">{{.Title}}</a> ({{.Posted}})</li>
+{{- end}}
+ </ul>
+</div>
+{{- end}}
+<a name="comments"></a>
+<h3 class="commentHeader">{{.CommentHeader}}</h3>
+{{- if .AddCommentURL}}
+<div class="addCommentLink">[<a href="{{.AddCommentURL}}">{{.AddCommentLabel}}</a>]</div>
+{{- end}}
+<ul id="comments">
+{{- range .Comments}}
+ <li class="comment{{if .Alt}} commentAlt{{end}}" id="{{.Anchor}}">
+{{- if .AvatarURL}}
+  <img src="{{.AvatarURL}}" alt="" title="{{.Name}}&#39;s Gravatar" class="avatar avatar-64 photo" width="64" height="64" />
+{{- end}}
+  <div class="commentByLine"><a class="comment-id" href="{{.URL}}">#{{.Number}}</a> {{if .Website}}<a href="{{.Website}}" rel="nofollow">{{.Name}}</a>{{else}}{{.Name}}{{end}} {{.Said}} on {{.Posted}}</div>
+  <div class="commentBody">{{.Body}}</div>
+ </li>
+{{- end}}
+</ul>
+{{- if .CommentsNotAllowed}}
+<div class="commentsnotallowed">{{.CommentsNotAllowed}}</div>
+{{- end}}
+<div class="clear"></div>
+{{- end}}
 {{- end}}
 {{- if .EmptyMessage}}
 <h3>{{.EmptyHeading}}</h3>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{.BlogTitle}}: {{.Title}}</title>
+<link rel="stylesheet" type="text/css" href="{{.CSSURL}}" />
+<link rel="stylesheet" type="text/css" href="{{.CodeCSSURL}}" />
+</head>
+<body id="printBody" style="background:#FFFFFF">
+ <div id="page">
+  <div id="content">
+   <div id="blogText">
+    <div class="printHeader">{{.BlogTitle}}: {{.Title}}</div>
+    <h1>{{.Title}}</h1>
+    <div class="byline">{{.PostedAtLabel}} : {{.Posted}}{{if .Author}} | {{.PostedByLabel}} : {{.Author}}{{end}}<br />
+{{- if .Categories}}
+     {{.CategoriesLabel}}: {{range $i, $c := .Categories}}{{if $i}}, {{end}}{{$c}}{{end}}
+{{- end}}
+    </div>
+    <div class="body">
+{{.Body}}
+{{- if .MoreBody}}
+{{.MoreBody}}
+{{- end}}
+    </div>
+   </div>
+  </div>
+ </div>
+</body>
+</html>

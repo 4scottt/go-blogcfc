@@ -7,8 +7,10 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"embed"
 	"html/template"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -36,7 +38,12 @@ var templateFS embed.FS
 
 // pageTemplates are the page bodies; each one defines "content" and is
 // parsed together with the layout into its own set.
-var pageTemplates = []string{"entries.html", "notfound.html"}
+var pageTemplates = []string{"entries.html", "notfound.html", "page.html"}
+
+// standaloneTemplates are whole documents of their own, rendered without
+// the site layout: the print view is BlogCFC's print.cfm, a page a
+// browser prints rather than one it browses (PLAN §8, §9 P18).
+var standaloneTemplates = []string{"print.html"}
 
 // Module holds the public site's dependencies and its parsed templates.
 type Module struct {
@@ -54,6 +61,7 @@ type Module struct {
 	identity Identity
 	bundle   *i18n.Bundle
 	tmpl     map[string]*template.Template
+	bare     map[string]*template.Template
 }
 
 // New builds the public site. It panics if the embedded templates do not
@@ -66,10 +74,14 @@ func New(cfg *config.Config, st *store.Store, settings *config.Settings, identit
 		identity: identity,
 		bundle:   i18n.New(settings.Locale()),
 		tmpl:     map[string]*template.Template{},
+		bare:     map[string]*template.Template{},
 	}
 	for _, name := range pageTemplates {
 		m.tmpl[name] = template.Must(template.New("layout.html").
 			ParseFS(templateFS, "templates/layout.html", "templates/"+name))
+	}
+	for _, name := range standaloneTemplates {
+		m.bare[name] = template.Must(template.ParseFS(templateFS, "templates/"+name))
 	}
 	return m
 }
@@ -150,6 +162,58 @@ func (m *Module) render(w http.ResponseWriter, page string, status int, data pag
 	w.WriteHeader(status)
 	if _, err := buf.WriteTo(w); err != nil {
 		slog.Debug("web: write failed", "error", err)
+	}
+}
+
+// renderBare writes one standalone document -- a template that is the
+// whole page, with no layout around it (the print view). It buffers for
+// the same reason render does.
+func (m *Module) renderBare(w http.ResponseWriter, page string, status int, data any) {
+	t, ok := m.bare[page]
+	if !ok {
+		slog.Error("web: unknown standalone template", "page", page)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	var buf bytes.Buffer
+	if err := t.ExecuteTemplate(&buf, page, data); err != nil {
+		slog.Error("web: render failed", "page", page, "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	if _, err := buf.WriteTo(w); err != nil {
+		slog.Debug("web: write failed", "error", err)
+	}
+}
+
+// writeHTML answers with an already-rendered fragment and nothing else:
+// the bare static page of PLAN §9 P17, which page.cfm printed without a
+// layout around it.
+func (m *Module) writeHTML(w http.ResponseWriter, status int, body template.HTML) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	if _, err := io.WriteString(w, string(body)); err != nil {
+		slog.Debug("web: write failed", "error", err)
+	}
+}
+
+// textblocks is the `<textblock label="x">` resolver render.Options wants,
+// read once per request (PLAN §9 A22). An unreadable table resolves
+// nothing rather than failing the page.
+func (m *Module) textblocks(ctx context.Context) func(string) (string, bool) {
+	blocks, err := m.store.TextblockMap(ctx)
+	if err != nil {
+		slog.Error("web: textblock lookup failed", "error", err)
+		return nil
+	}
+	if len(blocks) == 0 {
+		return nil
+	}
+	return func(label string) (string, bool) {
+		body, ok := blocks[label]
+		return body, ok
 	}
 }
 

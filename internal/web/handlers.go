@@ -1,8 +1,14 @@
 package web
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"html"
+	"log/slog"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -272,7 +278,7 @@ func (m *Module) renderListing(w http.ResponseWriter, r *http.Request, l listing
 	}
 
 	data := m.newPage(r, l.additionalTitle)
-	data.Entries = m.entryViews(entries, false)
+	data.Entries = m.entryViewsContext(r.Context(), entries, false)
 	if len(entries) == 0 {
 		data.EmptyHeading = m.bundle.T("sorry")
 		if l.criteria {
@@ -285,18 +291,100 @@ func (m *Module) renderListing(w http.ResponseWriter, r *http.Request, l listing
 	m.render(w, "entries.html", http.StatusOK, data)
 }
 
-// renderEntry is the one-entry view: body and morebody, no [more] link.
+// renderEntry is the one-entry view: body and morebody, no [more] link,
+// the related entries and the comments under it, and one view counted
+// for a visitor who has not been here before (PLAN §9 P12-P15).
 // A draft or a future entry is invisible unless an admin asked for
 // ?adminview=1 (PLAN §11 "Three entry states").
+//
+// The view is counted after the entry is read, so the footer prints the
+// count this visit found, as the as-is did: index.cfm had its query in
+// hand before it called logView.
 func (m *Module) renderEntry(w http.ResponseWriter, r *http.Request, e *store.Entry) {
 	if !e.Live(time.Now()) && !m.adminView(r) {
 		m.notFound(w, r)
 		return
 	}
+	ctx := r.Context()
 	data := m.newPage(r, e.Title)
 	data.Single = true
-	data.Entries = m.entryViews([]store.Entry{*e}, true)
+	data.Entries = m.entryViewsContext(ctx, []store.Entry{*e}, true)
+	if len(data.Entries) == 1 {
+		m.decorateEntry(ctx, &data.Entries[0], e)
+	}
+	m.countView(w, r, e.ID)
 	m.render(w, "entries.html", http.StatusOK, data)
+}
+
+// decorateEntry hangs the single-entry view's own blocks off the rendered
+// entry: the related entries (P13), the comment list and its heading
+// (P14), and either the add-comment link or the "comments not allowed"
+// string (P15). BlogCFC counted comments twice on this page -- once for
+// the header anchor, once for the list -- and so does this, through
+// CountComments and ListComments; both hide unmoderated rows.
+func (m *Module) decorateEntry(ctx context.Context, v *entryView, e *store.Entry) {
+	v.RelatedHeader = m.bundle.T("relatedblogentries")
+	v.Related = m.relatedViews(ctx, e.ID)
+	v.Comments = m.commentViews(ctx, e.ID, v.URL)
+
+	count, err := m.store.CountComments(ctx, e.ID)
+	if err != nil {
+		slog.Error("web: comment count failed", "entry", e.ID, "error", err)
+		count = len(v.Comments)
+	}
+	v.CommentCount = count
+	v.CommentHeader = fmt.Sprintf("%s (%d)", m.bundle.T("comments"), count)
+
+	if e.AllowComments {
+		v.AddCommentLabel = m.bundle.T("addcomment")
+		v.AddCommentURL = m.base() + "/comments/add/" + url.PathEscape(e.ID)
+		return
+	}
+	v.CommentsNotAllowed = m.bundle.T("commentsnotallowed")
+}
+
+// paragraphFormat2 is BlogCFC's ParagraphFormat2 (org/camden/blog/
+// utils.cfc, Ben Forta's UDF): line endings normalised, a tab widened to
+// three non-breaking spaces, and every newline turned into a `<br />`.
+// It is not the entry body's paragraph formatter -- that one, which
+// starts a new `<p>` on a blank line, lives in the render package -- and
+// a comment's single newlines are line breaks, not paragraph breaks.
+func paragraphFormat2(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	s = strings.ReplaceAll(s, "\t", "&nbsp;&nbsp;&nbsp;")
+	return strings.ReplaceAll(s, "\n", "<br />")
+}
+
+// linkPattern is the http(s) half of utils.cfc's replaceLinks pattern.
+// BlogCFC also linked `ftp:`, `gopher:` and bare `www.`/`ftp.` prefixes;
+// those are left as text here (PLAN §9 P14).
+var linkPattern = regexp.MustCompile(`https?://[-\w?%,./&#!;@:=+~]*[A-Za-z0-9/]`)
+
+// linkMax is replaceLinks' own `linkmax`: a URL longer than this is
+// shown truncated, though the link still points at the whole of it.
+const linkMax = 50
+
+// replaceLinks escapes a comment and turns its URLs into anchors. The
+// escaping is this package's, not BlogCFC's: index.cfm printed a stored
+// comment raw. Escaping happens between the matches and over the URLs
+// themselves, so nothing a commenter wrote reaches the page as markup.
+func replaceLinks(s string) string {
+	var b strings.Builder
+	last := 0
+	for _, loc := range linkPattern.FindAllStringIndex(s, -1) {
+		b.WriteString(html.EscapeString(s[last:loc[0]]))
+		link := s[loc[0]:loc[1]]
+		label := link
+		if len(label) >= linkMax {
+			label = label[:linkMax] + "..."
+		}
+		b.WriteString(`<a href="` + html.EscapeString(link) + `" rel="nofollow noopener" target="_blank">`)
+		b.WriteString(html.EscapeString(label) + `</a>`)
+		last = loc[1]
+	}
+	b.WriteString(html.EscapeString(s[last:]))
+	return b.String()
 }
 
 // numericSegment parses a date segment the way BlogCFC's getmode.cfm does:
