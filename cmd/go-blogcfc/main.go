@@ -32,6 +32,7 @@ import (
 	"github.com/4scottt/go-blogcfc/internal/legacy"
 	"github.com/4scottt/go-blogcfc/internal/mail"
 	"github.com/4scottt/go-blogcfc/internal/migrate"
+	"github.com/4scottt/go-blogcfc/internal/pods"
 	"github.com/4scottt/go-blogcfc/internal/store"
 	"github.com/4scottt/go-blogcfc/internal/web"
 )
@@ -195,13 +196,16 @@ func serve() error {
 	sessions := auth.New(cfg.SessionSecret, strings.HasPrefix(cfg.BlogBaseURL, "https://"), st)
 	adminModule := admin.New(cfg, st, settings, sessions)
 	publicModule := web.New(cfg, st, settings, sessions)
-	publicModule.Mail = mail.LogSender{} // SMTP arrives with M3; the demo logs its mail
+	sender := mail.LogSender{} // SMTP arrives with M3; the demo logs its mail
+	publicModule.Mail = sender
+	podsModule := pods.New(cfg, st, settings, sender)
+	publicModule.Sidebar = podsModule.Sidebar
 	legacyModule := legacy.New(cfg)
 	sitemapModule := feeds.NewSitemap(cfg, st, settings)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           app.New(cfg, st, settings, publicModule, adminModule, legacyModule, sitemapModule),
+		Handler:           app.New(cfg, st, settings, publicModule, podsModule, adminModule, legacyModule, sitemapModule),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,
