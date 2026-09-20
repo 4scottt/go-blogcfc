@@ -162,8 +162,20 @@ func assertSchema(ctx context.Context, t *testing.T, st *store.Store) {
 	if err != nil {
 		t.Fatalf("ListRoles: %v", err)
 	}
-	if len(roles) != 5 {
-		t.Fatalf("roles = %d, want the five BlogCFC roles", len(roles))
+	if len(roles) != len(migrate.SeedRoles) {
+		t.Fatalf("roles = %d, want %d (BlogCFC's five plus PageAdmin)", len(roles), len(migrate.SeedRoles))
+	}
+	// PageAdmin is the role the as-is menu checks for and the as-is
+	// installer never seeds (issue #2): migration 0003 and the seed both
+	// put it in, so it is there after Up on a database of any vintage.
+	pageAdmin := false
+	for _, r := range roles {
+		if r.Role == auth.RolePageAdmin {
+			pageAdmin = true
+		}
+	}
+	if !pageAdmin {
+		t.Fatalf("roles = %+v, want one named %s", roles, auth.RolePageAdmin)
 	}
 	for i, want := range migrate.SeedRoles {
 		if roles[i].ID != want.ID || roles[i].Role != want.Role || roles[i].Description != want.Description {

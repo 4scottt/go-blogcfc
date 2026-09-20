@@ -1,0 +1,61 @@
+{{define "content"}}
+<style>
+.errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.errors ul { margin: 6px 0 0; }
+a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; border-radius: 3px; background: #ece7d6; color: #241c14; }
+.note { display: block; color: #7b6d55; font-size: 0.9em; }
+#settingsForm fieldset { margin: 0 0 20px; padding: 10px 16px; border: 1px solid #b9b19a; }
+#settingsForm legend { padding: 0 6px; font-weight: bold; }
+#settingsForm ul { margin: 0; padding: 0; list-style: none; }
+#settingsForm li { margin: 0 0 12px; }
+#settingsForm label { display: block; font-weight: bold; }
+#settingsForm input[type=text], #settingsForm textarea { width: 100%; max-width: 640px; box-sizing: border-box; }
+#settingsForm textarea { height: 7em; font-family: inherit; }
+.readonly { color: #4a4034; }
+</style>
+
+{{if .Page.Errors}}
+<div class="errors">
+	<p>Please correct the following:</p>
+	<ul>{{range .Page.Errors}}<li>{{.}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+<p class="note">
+	Please edit your settings below. A mistake here can make both the blog and this
+	administrator hard to reach, so be careful. The data source and mail rows come from
+	the container's environment and are shown here read-only.
+</p>
+
+<form id="settingsForm" method="post" action="/admin/settings">
+{{range .Page.Fieldsets}}
+	<fieldset>
+		<legend>{{.Legend}}</legend>
+		<ul>
+		{{range .EnvRows}}
+			<li><label>{{.Label}}</label><span class="readonly">{{.Value}}</span></li>
+		{{end}}
+		{{range .Fields}}
+			<li>
+				<label for="{{.Key}}">{{.Label}}</label>
+				{{if eq .Kind "textarea"}}
+				<textarea id="{{.Key}}" name="{{.Key}}" rows="7">{{.Value}}</textarea>
+				{{else if or (eq .Kind "yesno") (eq .Kind "select")}}
+				<select id="{{.Key}}" name="{{.Key}}"{{if .Disabled}} disabled{{end}}>
+				{{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+				</select>
+				{{else}}
+				<input type="text" id="{{.Key}}" name="{{.Key}}" value="{{.Value}}" maxlength="255"{{if .ReadOnly}} readonly{{end}}>
+				{{end}}
+				{{if .Note}}<span class="note">{{.Note}}</span>{{end}}
+			</li>
+		{{end}}
+		</ul>
+	</fieldset>
+{{end}}
+	<div class="buttonbar">
+		<a class="button" id="cancel" href="/admin/">Cancel</a>
+		<input type="submit" name="save" value="Save">
+	</div>
+</form>
+{{end}}

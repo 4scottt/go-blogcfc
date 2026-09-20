@@ -2,10 +2,10 @@ package auth
 
 import "github.com/4scottt/go-blogcfc/internal/store"
 
-// The role names BlogCFC's installer seeds (internal/migrate/seed.go) and
-// the one the as-is admin menu checks for but never seeds, PageAdmin: its
-// screens are reachable only through Admin until a later package adds the
-// role (PLAN §9 A19).
+// The role names BlogCFC's installer seeds (internal/migrate/seed.go),
+// plus PageAdmin, which the as-is admin menu checks for but never seeds;
+// the rewrite seeds it as role 6 (issue #2, migration 0003), so it can be
+// granted like any other (PLAN §9 A19).
 const (
 	RoleAdmin            = "Admin"
 	RoleAddCategory      = "AddCategory"

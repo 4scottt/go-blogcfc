@@ -10,7 +10,7 @@ import (
 	"github.com/4scottt/go-blogcfc/internal/store"
 )
 
-// SeedRole is one of BlogCFC's five roles. LegacyID is the id the as-is
+// SeedRole is one of the blog's roles. LegacyID is the id the as-is
 // installer used, kept so an importer can map old rows.
 type SeedRole struct {
 	ID          int
@@ -20,13 +20,19 @@ type SeedRole struct {
 }
 
 // SeedRoles are the five roles from BlogCFC's MySQL installer
-// (client/installer/mysql/script.txt), names and descriptions verbatim.
+// (client/installer/mysql/script.txt), names and descriptions verbatim,
+// plus PageAdmin, which the as-is checks for but never seeds.
 var SeedRoles = []SeedRole{
 	{1, "AddCategory", "The ability to create a new category when editing a blog entry.", "7F183B27-FEDE-0D6F-E2E9C35DBC7BFF19"},
 	{2, "ManageCategories", "The ability to manage blog categories.", "7F197F53-CFF7-18C8-53D0C85FCC2CA3F9"},
 	{3, "Admin", "A special role for the admin. Allows all functionality.", "7F25A20B-EE6D-612D-24A7C0CEE6483EC2"},
 	{4, "ManageUsers", "The ability to manage blog users.", "7F26DA6C-9F03-567F-ACFD34F62FB77199"},
 	{5, "ReleaseEntries", "The ability to both release a new entry and edit any released entry.", "800CA7AA-0190-5329-D3C7753A59EA2589"},
+	// PageAdmin is the sixth: the as-is menu gates the Pages screens on it
+	// (client/tags/adminlayout.cfm) but the installer never seeds it, so
+	// the role exists only in the check (issue #2, migration 0003). It has
+	// no as-is description and no legacy id.
+	{6, "PageAdmin", "Manage pages", ""},
 }
 
 // DefaultSettings are the seed values of the settings table (PLAN §10).

@@ -1,0 +1,33 @@
+{{define "content"}}
+<p id="usercount">
+	Your blog currently has {{len .Page.Rows}} {{if eq (len .Page.Rows) 1}}user{{else}}users{{end}}.
+</p>
+
+<p class="note">
+	Deleting a user with blog entries leaves those entries without an author's name,
+	so it is not recommended. The account you are signed in with cannot be deleted.
+</p>
+
+<p><a id="adduser" href="/admin/users/new">Add User</a></p>
+
+<table id="users" class="datatable">
+	<thead>
+		<tr><th>Username</th><th>Name</th><th>Roles</th></tr>
+	</thead>
+	<tbody>
+	{{range .Page.Rows}}
+		<tr>
+			<td><a href="/admin/users/{{.Username}}">{{.Username}}</a></td>
+			<td>{{.Name}}</td>
+			<td>{{if .Roles}}{{.Roles}}{{else}}&mdash;{{end}}</td>
+		</tr>
+	{{else}}
+		<tr><td colspan="3">No users.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+
+<style>
+.note { color: #7b6d55; }
+</style>
+{{end}}
