@@ -37,6 +37,11 @@ the image reads.
     go-blogcfc seed-admin    # create the admin user from $ADMIN_PASSWORD
     go-blogcfc healthcheck  # GET /health on 127.0.0.1, exit 0 when it answers 200
 
+Mail is logged, never sent, unless `MAIL_MODE=smtp` is set explicitly:
+`SMTP_HOST` and friends on their own configure a server the blog will not
+use, so a demo host can carry real settings without a message ever
+reaching an inbox.
+
 `scripts/dev.sh` brings up the database and serves on
 <http://localhost:8081>; the admin user is `admin` with the password in
 `ADMIN_PASSWORD` (`admin` by default in dev). `scripts/test.sh` runs the
@@ -48,6 +53,6 @@ test suite against the same database. Logs are JSON lines on stdout and
 Go 1.27+ to build, MariaDB 10.11 (or a MySQL-compatible server with
 utf8mb4) to run, and Docker only for the container image and the tests'
 database. Configuration is environment variables — `BLOG_BASE_URL`,
-`SESSION_SECRET`, `DB_*`, `ADMIN_PASSWORD`, `DATA_DIR`, optional `SMTP_*`
-and the standard `OTEL_*` — with everything an operator changes day to
-day kept in the blog's own settings table.
+`SESSION_SECRET`, `DB_*`, `ADMIN_PASSWORD`, `DATA_DIR`, `MAIL_MODE`,
+optional `SMTP_*` and the standard `OTEL_*` — with everything an operator
+changes day to day kept in the blog's own settings table.

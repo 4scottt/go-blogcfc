@@ -1,0 +1,14 @@
+{{.Title}}
+
+URL: {{.EntryURL}}
+Author: {{.Author}}
+
+{{.Body}}
+{{- if .HasMore}}
+
+[Continued at Blog] {{.EntryURL}}
+{{- end}}
+
+You are receiving this email because you have subscribed to this blog.
+To unsubscribe, please go to this URL:
+{{.UnsubscribeURL}}

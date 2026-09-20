@@ -1,0 +1,15 @@
+Comment Added to {{.BlogTitle}} : {{.EntryTitle}}
+{{.EntryURL}}
+
+{{.Comment}}
+
+------------------------------------------------------------
+Comment made by: {{.Author}}{{with .AuthorEmail}} ({{.}}){{end}}
+{{- with .Website}}
+Website: {{.}}
+{{- end}}
+{{- with .Posted}}
+Posted: {{.}}
+{{- end}}
+
+%unsubscribe%

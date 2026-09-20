@@ -1,0 +1,8 @@
+{{.CommentAddedLabel}}: {{.When}}
+{{.CommentMadeByLabel}}: {{.Name}} ({{.Email}})
+{{.IPLabel}}: {{.IP}}
+
+{{.Comments}}
+
+------------------------------------------------------------
+This blog powered by go-blogcfc {{.Version}}, a rewrite of BlogCFC by Raymond Camden

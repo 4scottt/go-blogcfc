@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/4scottt/go-blogcfc/internal/mail"
 )
 
 // Config is the environment the process starts with. Everything here is
@@ -28,6 +30,10 @@ type Config struct {
 	SessionSecret string
 	DataDir       string
 
+	// MailMode is MAIL_MODE. It defaults to "log" and only the explicit
+	// value "smtp" lets a message leave the container: SMTP_* being set
+	// is configuration, not consent (the user's rule, 2026-09-19).
+	MailMode     string
 	SMTPHost     string
 	SMTPPort     int
 	SMTPUser     string
@@ -50,6 +56,7 @@ func Load() (*Config, error) {
 		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
 		SessionSecret: os.Getenv("SESSION_SECRET"),
 		DataDir:       envString("DATA_DIR", "/var/lib/go-blogcfc"),
+		MailMode:      envString("MAIL_MODE", mail.ModeLog),
 		SMTPHost:      os.Getenv("SMTP_HOST"),
 		SMTPPort:      envInt("SMTP_PORT", 25),
 		SMTPUser:      os.Getenv("SMTP_USER"),
@@ -90,9 +97,23 @@ func (c *Config) DSN() string {
 // Addr is the listen address.
 func (c *Config) Addr() string { return fmt.Sprintf(":%d", c.Port) }
 
-// MailConfigured reports whether SMTP is set; when it is not, the mail
-// sender logs instead of sending.
-func (c *Config) MailConfigured() bool { return c.SMTPHost != "" }
+// Mail is what mail.New needs. The mode travels with the rest so that a
+// deployment with SMTP_* set but MAIL_MODE unset still only logs.
+func (c *Config) Mail() mail.MailConfig {
+	return mail.MailConfig{
+		Mode:     c.MailMode,
+		Host:     c.SMTPHost,
+		Port:     strconv.Itoa(c.SMTPPort),
+		User:     c.SMTPUser,
+		Password: c.SMTPPassword,
+	}
+}
+
+// MailConfigured reports whether mail will actually be sent: SMTP_HOST
+// alone is not enough, MAIL_MODE must say smtp as well.
+func (c *Config) MailConfigured() bool {
+	return strings.EqualFold(strings.TrimSpace(c.MailMode), mail.ModeSMTP) && c.SMTPHost != ""
+}
 
 func envString(key, def string) string {
 	if v, ok := os.LookupEnv(key); ok && v != "" {

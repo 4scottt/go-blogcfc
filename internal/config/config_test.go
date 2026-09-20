@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/4scottt/go-blogcfc/internal/config"
+	"github.com/4scottt/go-blogcfc/internal/mail"
 )
 
 // TestConfigDefaultsAndRequiredForServe covers the §6 table: the
 // defaults, and what serving insists on.
 func TestConfigDefaultsAndRequiredForServe(t *testing.T) {
-	for _, k := range []string{"PORT", "BLOG_BASE_URL", "SESSION_SECRET", "DATA_DIR", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD", "ADMIN_PASSWORD", "TZ"} {
+	for _, k := range []string{"PORT", "BLOG_BASE_URL", "SESSION_SECRET", "DATA_DIR", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD", "ADMIN_PASSWORD", "TZ", "MAIL_MODE", "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD"} {
 		t.Setenv(k, "")
 	}
 
@@ -68,5 +69,54 @@ func TestConfigDefaultsAndRequiredForServe(t *testing.T) {
 	cfg, _ = config.Load()
 	if err := cfg.ValidateForServe(); err == nil {
 		t.Error("a relative BLOG_BASE_URL must be refused")
+	}
+}
+
+// TestMailModeDefaultsToLog is the environment half of the user's rule
+// (2026-09-19): MAIL_MODE is "log" unless someone sets it, and SMTP_*
+// on their own never turn sending on.
+func TestMailModeDefaultsToLog(t *testing.T) {
+	for _, k := range []string{"MAIL_MODE", "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD"} {
+		t.Setenv(k, "")
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.MailMode != mail.ModeLog {
+		t.Errorf("MAIL_MODE default = %q, want %q", cfg.MailMode, mail.ModeLog)
+	}
+
+	// The whole SMTP set, and still no sending.
+	t.Setenv("SMTP_HOST", "smtp.example")
+	t.Setenv("SMTP_PORT", "587")
+	t.Setenv("SMTP_USER", "blog")
+	t.Setenv("SMTP_PASSWORD", "s3cret")
+	cfg, err = config.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.MailConfigured() {
+		t.Error("SMTP_* without MAIL_MODE=smtp must not count as configured mail")
+	}
+	mc := cfg.Mail()
+	if mc.Mode != mail.ModeLog || mc.Host != "smtp.example" || mc.Port != "587" || mc.User != "blog" || mc.Password != "s3cret" {
+		t.Errorf("Mail() = %+v", mc)
+	}
+	if _, ok := mail.New(mc, nil).(mail.LogSender); !ok {
+		t.Fatalf("the default sender must be the log sender, got %T", mail.New(mc, nil))
+	}
+
+	t.Setenv("MAIL_MODE", "smtp")
+	cfg, err = config.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.MailConfigured() {
+		t.Error("MAIL_MODE=smtp with a host is configured mail")
+	}
+	if _, ok := mail.New(cfg.Mail(), nil).(mail.SMTPSender); !ok {
+		t.Error("MAIL_MODE=smtp must build the SMTP sender")
 	}
 }

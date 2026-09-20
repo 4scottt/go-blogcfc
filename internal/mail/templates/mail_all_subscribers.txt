@@ -1,0 +1,12 @@
+{{if .HTML}}{{.Body}}<br />
+<p>
+You are receiving this email because you have subscribed to this blog.<br />
+To unsubscribe, please go to this URL:
+<a href="{{.UnsubscribeURL}}">{{.UnsubscribeURL}}</a>
+</p>
+{{else}}{{.Body}}
+
+You are receiving this email because you have subscribed to this blog.
+To unsubscribe, please go to this URL:
+{{.UnsubscribeURL}}
+{{end}}

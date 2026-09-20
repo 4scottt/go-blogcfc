@@ -1,0 +1,12 @@
+<p>
+The following blog entry was sent to you from: <b>{{.Sender}}</b><br />
+It came from the blog: <b>{{.BlogTitle}}</b><br />
+The entry is titled: <b>{{.Title}}</b><br />
+The entry can be found here: <b><a href="{{.Link}}">{{.Link}}</a></b>
+</p>
+{{if .Notes}}<p>
+The following notes were included:<br />
+<b>{{.Notes}}</b>
+</p>
+<hr />
+{{end}}{{.Body}}{{.MoreBody}}

@@ -196,7 +196,9 @@ func serve() error {
 	sessions := auth.New(cfg.SessionSecret, strings.HasPrefix(cfg.BlogBaseURL, "https://"), st)
 	adminModule := admin.New(cfg, st, settings, sessions)
 	publicModule := web.New(cfg, st, settings, sessions)
-	sender := mail.LogSender{} // SMTP arrives with M3; the demo logs its mail
+	// Log sender unless MAIL_MODE=smtp is set explicitly: no mail leaves the
+	// container by default, whatever SMTP_* says.
+	sender := mail.New(cfg.Mail(), slog.Default())
 	publicModule.Mail = sender
 	podsModule := pods.New(cfg, st, settings, sender)
 	publicModule.Sidebar = podsModule.Sidebar
