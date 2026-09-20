@@ -42,6 +42,9 @@ type Module struct {
 	// caches it flushes arrive with the render package, so this stays a
 	// hook and a nil Reinit is a no-op (PLAN §9 A29).
 	Reinit func()
+	// Flush drops the in-process caches (home page, feeds, pods) after any
+	// admin write (PLAN §11 "Caching", A29). main.go sets it; nil is a no-op.
+	Flush func()
 
 	// Release is called right after an entry is saved, with the entry's
 	// stored Released flag from *before* that save (false for a new
@@ -92,4 +95,13 @@ func (m *Module) notify(ctx context.Context, e *store.Entry, c *store.Comment, a
 		return 0, nil
 	}
 	return m.Notify(ctx, e, c, adminOnly)
+}
+
+// flush calls the cache-flush hook when one is set: every handler that
+// writes an entry, comment, page, textblock, category or setting calls it
+// after the write succeeds.
+func (m *Module) flush() {
+	if m.Flush != nil {
+		m.Flush()
+	}
 }

@@ -59,5 +59,10 @@ func (m *Module) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /admin/subscribers/mail", m.sessions.RequireLogin(http.HandlerFunc(m.mailSubscribersForm)))
 	mux.Handle("POST /admin/subscribers/mail", m.sessions.RequireLogin(http.HandlerFunc(m.mailSubscribersSend)))
 
+	// M4's packages register their screens in their own files.
+	m.routesUsers(mux)
+	m.routesContent(mux)
+	m.routesEntryExtras(mux)
+
 	mux.Handle("GET /admin/", m.sessions.RequireLogin(http.HandlerFunc(m.notFound)))
 }
