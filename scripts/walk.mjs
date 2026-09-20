@@ -54,7 +54,18 @@ try {
   const own = new URL(url).host;
   page.on("requestfailed", (r) => { if (new URL(r.url()).host === own) problems.push(`${r.failure()?.errorText || "failed"}: ${r.url()}`); });
   page.on("response", (r) => { if (r.status() >= 400 && r.request().resourceType() !== "document" && new URL(r.url()).host === own) problems.push(`${r.status()}: ${r.url()}`); });
-  page.on("console", (m) => { if (m.type() === "error") problems.push(`console: ${m.text().slice(0, 200)} (${m.location()?.url || "no url"})`); });
+  // A console error about a third-party URL (Gravatar's image proxy failing
+  // to fetch our default avatar through a basic-auth gate) is a note, as in
+  // oldbox's walk; one about the app's own origin is a problem.
+  const external = [];
+  page.on("console", (m) => {
+    if (m.type() !== "error") return;
+    const where = m.location()?.url || "";
+    const foreign = [...(m.text().match(/https?:\/\/[^\s'"()]+/g) || []), where].filter((u) => { try { return u && new URL(u).host !== own; } catch { return false; } });
+    if (foreign.length) external.push(`console: ${m.text().slice(0, 120)} (${foreign[0].slice(0, 160)})`);
+    else problems.push(`console: ${m.text().slice(0, 200)} (${where || "no url"})`);
+  });
+  page.on("close", () => { if (external.length) { console.log(`  ${external.length} third-party resource(s) failed (noted, not failures):`); for (const x of [...new Set(external)]) console.log(`    ${x}`); } });
   page.on("pageerror", (e) => problems.push(`page error at ${page.url()}: ${String(e.stack || e).split("\n").slice(0, 2).join(" | ").slice(0, 300)}`));
   page.setDefaultTimeout(30_000);
 
