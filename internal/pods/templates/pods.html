@@ -1,0 +1,61 @@
+{{/* The sidebar's furniture and the pods that sit in it (PLAN §12). */}}
+
+{{define "box"}}<li class="block"><div class="box"><div class="titlewrap"><h4>{{.Title}}</h4></div><div class="the-content">{{.Content}}</div></div></li>
+{{end}}
+
+{{define "list"}}{{if .Items}}<ul>{{range .Items}}
+<li><a href="{{.URL}}">{{.Label}}{{if .Count}} ({{.Count}}){{end}}</a></li>{{end}}
+</ul>
+{{else if .Empty}}<p>{{.Empty}}</p>
+{{end}}{{end}}
+
+{{define "archives"}}{{if .Items}}<ul>{{range .Items}}
+<li><a href="{{.URL}}" title="{{.Title}}">{{.Label}} ({{.Count}})</a> [<a href="{{.Extra}}" rel="noindex,nofollow">RSS</a>]</li>{{end}}
+</ul>
+{{end}}{{end}}
+
+{{define "recentcomments"}}{{if .Items}}<ul>{{range .Items}}
+<li><a href="{{.EntryURL}}">{{.EntryTitle}}</a><br />
+{{.Name}} {{.Said}}: {{.Excerpt}}{{if .Ellipsis}}...{{end}} <a href="{{.MoreURL}}">[{{.MoreLabel}}]</a></li>{{end}}
+</ul>
+{{else}}<p>{{.Empty}}</p>
+{{end}}{{end}}
+
+{{define "calendar"}}
+<table border="0" id="calendar" class="calendarTable">
+<thead>
+<tr>
+<td colspan="7" align="center"><a href="{{.PrevURL}}" rel="nofollow">&lt;&lt;</a> <a href="{{.MonthURL}}" rel="nofollow">{{.MonthTitle}}</a> <a href="{{.NextURL}}" rel="nofollow">&gt;&gt;</a></td>
+</tr>
+<tr>{{range .DayNames}}<th>{{.}}</th>{{end}}</tr>
+</thead>
+<tbody>
+{{range .Weeks}}<tr>{{range .}}{{if .Blank}}<td>&nbsp;</td>{{else}}<td{{if .Today}} class="calendarToday"{{end}}>{{if .URL}}<a href="{{.URL}}" rel="nofollow">{{.Day}}</a>{{else}}{{.Day}}{{end}}</td>{{end}}{{end}}</tr>
+{{end}}</tbody>
+</table>
+{{end}}
+
+{{define "search"}}
+<div class="center">
+<form action="{{.ActionURL}}" method="get" onsubmit="return(this.search.value.length != 0)">
+<p class="center"><input type="text" name="search" size="15" /> <input type="submit" value="{{.Label}}" /></p>
+</form>
+</div>
+{{end}}
+
+{{define "subscribe"}}
+<div class="center">
+<p>{{.Intro}}</p>
+<form action="{{.ActionURL}}" method="post" onsubmit="return(this.email.value.length != 0)">
+<p><input type="text" name="email" size="15" /> <input type="submit" value="{{.Label}}" /></p>
+</form>
+</div>
+{{end}}
+
+{{define "tagcloud"}}
+{{range .}}<a href="{{.URL}}"><span class="{{.Class}}">{{.Name}}</span></a>
+{{end}}{{end}}
+
+{{define "rss"}}
+<p class="center"><a href="{{.URL}}" rel="noindex,nofollow">RSS</a></p>
+{{end}}

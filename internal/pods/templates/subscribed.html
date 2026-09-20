@@ -1,0 +1,25 @@
+{{define "subscribed"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{.BlogTitle}} - {{.Title}}</title>
+<link rel="stylesheet" href="{{.CSSURL}}" />
+</head>
+<body>
+ <div id="page">
+  <div id="main-wrap1"><div id="main-wrap2">
+   <div id="main" class="block-content">
+    <div class="post">
+     <div class="post-header"><h3 class="post-title">{{.Title}}</h3></div>
+     <div class="post-content">
+      <p class="{{if .Failed}}error{{else}}success{{end}}">{{.Message}}</p>
+      <p><a href="{{.HomeURL}}">{{.HomeLabel}}</a></p>
+     </div>
+    </div>
+   </div>
+  </div></div>
+ </div>
+</body>
+</html>
+{{end}}
