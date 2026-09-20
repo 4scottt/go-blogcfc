@@ -10,7 +10,8 @@
 //   WALK_GATE_USER / WALK_GATE   basic-auth credentials when walking through an oldbox gate
 //   WALK_BROWSER     chrome (default: Chrome channel) | chromium (Playwright's own, for CI)
 //   WALK_HEADED=1    show the browser
-//   WALK_STEPS       how many steps to run (default: all that this milestone supports)
+//   WALK_STEPS       how many steps to run (default 5; 6 adds the feed, 7 the comment)
+//   WALK_FEED=0      skip the feed step even when WALK_STEPS >= 6 (the feed lands with M5)
 //   PLAYWRIGHT_DIR   where `playwright` is installed (default: scripts/.walk, then a global resolve)
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -110,21 +111,35 @@ try {
   note("responsive: no horizontal scroll at phone width");
   if (desktop) await page.setViewportSize(desktop);
 
-  if (steps >= 6) {
+  if (steps >= 6 && process.env.WALK_FEED !== "0") {
     const rss = await ctx.request.get(`${url}/rss?mode=full`);
     const feed = await rss.text();
     if (rss.status() !== 200 || !feed.includes(title)) throw new Error(`the feed: ${rss.status()}, entry ${feed.includes(title) ? "present" : "missing"}`);
     note("entry in the feed");
   }
   if (steps >= 7) {
-    await page.click(`text=${title}`);
-    await page.click('a[href*="/comments/add/"]');
+    // The comment form is a popup in the as-is; here it also renders full
+    // page, so the walk opens it as a page rather than a window.
+    await page.goto(`${url}/`);
+    await page.click(`h3.post-title a:has-text("${title}")`);
+    const entryURL = page.url();
+    const add = page.locator('a[href*="/comments/add/"]').first();
+    await add.waitFor();
+    await page.goto(new URL(await add.getAttribute("href"), url).toString());
     await page.fill('input[name="name"]', "Walker");
     await page.fill('input[name="email"]', "walker@example.com");
     await page.fill('textarea[name="comment"]', "The rewrite reads well.");
-    await page.getByRole("button", { name: "Post Comment" }).first().click();
-    await page.goto(`${url}/`);
-    await page.click(`text=${title}`);
+    const captcha = page.locator('input[name="captcha"]');
+    if (await captcha.count()) {
+      const q = await page.locator("body").innerText();
+      const m = q.match(/(\d+)\s*\+\s*(\d+)/);
+      if (!m) throw new Error("the comment form shows a challenge the walk cannot read");
+      await captcha.fill(String(Number(m[1]) + Number(m[2])));
+    }
+    // The antispam timing rule wants a human-paced fill (5 s minimum).
+    await page.waitForTimeout(5500);
+    await page.getByRole("button", { name: "Post Comment" }).or(page.locator('input[type="submit"][value="Post Comment"]')).first().click();
+    await page.goto(entryURL);
     await expectText(page, "The rewrite reads well.", "the comment on the entry");
     note("comment on the entry");
   }

@@ -1,0 +1,11 @@
+{{define "content"}}
+<div class="post">
+ <div class="post-header">
+  <h3 class="post-title">{{.Heading}}</h3>
+ </div>
+ <div class="post-content">
+  <p class="subscription-message">{{.Message}}</p>
+  <p class="subscription-return"><a href="{{.ReturnURL}}">{{.ReturnLabel}}</a></p>
+ </div>
+</div>
+{{end}}

@@ -4,7 +4,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -62,7 +61,8 @@ func (m *Module) handleSubscribe(w http.ResponseWriter, r *http.Request) {
 	m.result(w, c, c.bundle.T("subscribeconfirmation"), false)
 }
 
-// sendConfirmation mails the double opt-in link (PLAN §9 C13). A sender
+// sendConfirmation mails the double opt-in link through the mail
+// package's own template (PLAN §9 C13, mail.SubscribeConfirmation). A sender
 // that fails costs the mail, not the page: the address is on the list and
 // subscribing again sends a fresh link.
 func (m *Module) sendConfirmation(c *podCtx, email, token string) {
@@ -70,13 +70,15 @@ func (m *Module) sendConfirmation(c *podCtx, email, token string) {
 		slog.Warn("pods: no mail sender configured, subscription not confirmed", "email", email)
 		return
 	}
-	msg := mail.Message{
-		To:      []string{email},
-		From:    m.settings.OwnerEmail(),
-		Subject: strings.TrimSpace(m.settings.BlogTitle() + " " + strings.TrimSpace(c.bundle.T("subscribeconfirm"))),
-		Body: c.bundle.T("subscribeconfirmation") + "\n\n" +
-			c.base + "/confirmsubscription?t=" + url.QueryEscape(token) + "\n",
-	}
+	msg := mail.SubscribeConfirmation(mail.SubscribeConfirmationVars{
+		BaseURL:   c.base,
+		BlogTitle: m.settings.BlogTitle(),
+		To:        email,
+		From:      m.settings.OwnerEmail(),
+		Token:     token,
+		Subject:   strings.TrimSpace(m.settings.BlogTitle() + " " + strings.TrimSpace(c.bundle.T("subscribeconfirm"))),
+		Intro:     c.bundle.T("subscribeconfirmation"),
+	})
 	if err := m.sender.Send(c.ctx, msg); err != nil {
 		slog.Warn("pods: confirmation mail failed", "email", email, "error", err)
 	}
