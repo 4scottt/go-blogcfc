@@ -82,9 +82,15 @@ try {
   await expectText(page, category, "the categories list");
   note(`category created: ${category}`);
 
-  // 4. a released entry in it
+  // 4. a released entry in it. FP: A11 first: the editor keeps a draft of
+  // the title and body for a new entry, so a reload brings the title back.
   await page.goto(`${url}/admin/entries/new`);
   await page.fill('input[name="title"]', title);
+  await page.waitForTimeout(300);
+  await page.reload();
+  const restored = await page.inputValue('input[name="title"]');
+  if (restored !== title) throw new Error(`crash-recovery draft: the title came back as ${JSON.stringify(restored)}`);
+  note("editor: draft restored after a reload");
   await page.fill('textarea[name="body"]', `<p>Posted by the headless walk at ${new Date().toISOString()}.</p>`);
   await page.selectOption('select[name="categories"]', { label: category });
   const released = page.locator('input[name="released"]');
@@ -108,7 +114,7 @@ try {
     const w = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     throw new Error(`responsive: the home page scrolls sideways at 390px (scrollWidth ${w[0]} > innerWidth ${w[1]})`);
   }
-  note("responsive: no horizontal scroll at phone width");
+  note("responsive: no horizontal scroll at phone width"); // FP: P28
   if (desktop) await page.setViewportSize(desktop);
 
   if (steps >= 6 && process.env.WALK_FEED !== "0") {
@@ -152,5 +158,6 @@ try {
   await browser.close();
 }
 if (failed) { console.error(`FAIL: ${failed.message}`); process.exit(1); }
+// FP: O08: zero console errors, zero page errors, zero own-origin resources >= 400.
 if (problems.length) { console.error(`FAIL: ${problems.length} browser problem(s)`); for (const p of problems) console.error(`  ${p}`); process.exit(1); }
 console.log(`PASS: ${steps} steps, no console errors, no page errors, no failed own-origin resources`);
