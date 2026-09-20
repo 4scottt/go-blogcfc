@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/4scottt/go-blogcfc/internal/config"
+	"github.com/4scottt/go-blogcfc/internal/render"
 	"github.com/4scottt/go-blogcfc/internal/static"
 	"github.com/4scottt/go-blogcfc/internal/store"
 )
@@ -44,6 +45,14 @@ func New(cfg *config.Config, st *store.Store, settings *config.Settings, modules
 	mux.Handle("GET /static/", http.StripPrefix("/static/", noDirListing(http.FileServerFS(static.FS))))
 	// Browsers ask for /favicon.ico unprompted; an own-origin 404 fails the
 	// acceptance walk, so the icon answers at the root as well.
+	// The code-block colours come from the render package (Chroma classes);
+	// the layout links them as /static/css/code.css.
+	codeCSS := []byte(render.CSS())
+	mux.HandleFunc("GET /static/css/code.css", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		_, _ = w.Write(codeCSS)
+	})
 	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFileFS(w, r, static.FS, "images/favicon.ico")
 	})

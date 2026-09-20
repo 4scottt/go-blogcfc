@@ -11,48 +11,98 @@ import (
 	"sync"
 )
 
-// DefaultLocale is the only bundle shipped today. M2 adds de_DE; until
-// then New answers every locale with this one.
+// DefaultLocale is the bundle every other locale falls back to, key by
+// key (PLAN §9 R05).
 const DefaultLocale = "en_US"
 
-// files holds the bundles. main_en_US.properties is BlogCFC's own file,
-// copied verbatim (see README.md in this directory).
+// Locales are the bundles shipped, BlogCFC's own four. The German three
+// are byte-identical in the as-is and are kept apart all the same: they
+// differ in their dates (PLAN §9 R06), and a German string that wants to
+// differ in Austria has somewhere to go.
+var Locales = []string{"en_US", "de_DE", "de_AT", "de_CH"}
+
+// files holds the bundles: BlogCFC's own `.properties` files, copied
+// verbatim (see README.md in this directory).
 //
-//go:embed main_en_US.properties
+//go:embed main_en_US.properties main_de_DE.properties main_de_AT.properties main_de_CH.properties
 var files embed.FS
 
 // Bundle is one locale's strings. It is read-only after New and safe for
 // concurrent use.
 type Bundle struct {
-	locale string
-	values map[string]string
+	locale   string
+	values   map[string]string
+	fallback *Bundle // en_US, for keys this bundle is missing; nil on en_US
 }
 
 var (
 	loadOnce sync.Once
-	loaded   *Bundle
+	bundles  map[string]*Bundle
 	loadErr  error
 )
 
-// New returns the bundle for a locale. Any locale but en_US falls back to
-// en_US, which is the only bundle in M1. The parse happens once.
-func New(locale string) *Bundle {
+// load parses every embedded bundle, once.
+func load() {
 	loadOnce.Do(func() {
-		b, err := parseFile("main_en_US.properties")
+		bundles = map[string]*Bundle{}
+		base, err := parseFile("main_" + DefaultLocale + ".properties")
 		if err != nil {
 			loadErr = err
-			loaded = &Bundle{locale: DefaultLocale, values: map[string]string{}}
-			return
+			base = &Bundle{locale: DefaultLocale, values: map[string]string{}}
 		}
-		loaded = b
+		bundles[DefaultLocale] = base
+		for _, locale := range Locales {
+			if locale == DefaultLocale {
+				continue
+			}
+			b, err := parseFile("main_" + locale + ".properties")
+			if err != nil {
+				if loadErr == nil {
+					loadErr = err
+				}
+				continue
+			}
+			b.fallback = base
+			bundles[locale] = b
+		}
 	})
-	_ = locale // every locale is en_US until M2 adds de_DE.
-	return loaded
 }
 
-// LoadError reports a failure to parse the embedded bundle. It can only
-// fire if the embedded file is corrupt, so callers may check it at start.
-func LoadError() error { _ = New(DefaultLocale); return loadErr }
+// New returns the bundle for a locale. An unknown locale - anything but
+// the four in Locales - answers with en_US, and a key a known bundle is
+// missing falls back to en_US's value (PLAN §9 R05).
+func New(locale string) *Bundle {
+	load()
+	if b, ok := bundles[Normalize(locale)]; ok {
+		return b
+	}
+	return bundles[DefaultLocale]
+}
+
+// Known reports whether a locale has a bundle of its own.
+func Known(locale string) bool {
+	load()
+	_, ok := bundles[Normalize(locale)]
+	return ok
+}
+
+// Normalize puts a locale in BlogCFC's `language_COUNTRY` shape, so
+// "de-de", "DE_DE" and " de_DE " all reach the German bundle. A string
+// that is not two parts is returned trimmed and otherwise untouched,
+// which simply will not match.
+func Normalize(locale string) string {
+	locale = strings.TrimSpace(locale)
+	locale = strings.ReplaceAll(locale, "-", "_")
+	lang, country, ok := strings.Cut(locale, "_")
+	if !ok {
+		return locale
+	}
+	return strings.ToLower(lang) + "_" + strings.ToUpper(country)
+}
+
+// LoadError reports a failure to parse an embedded bundle. It can only
+// fire if an embedded file is corrupt, so callers may check it at start.
+func LoadError() error { load(); return loadErr }
 
 // Locale is the bundle's locale name.
 func (b *Bundle) Locale() string { return b.locale }
@@ -62,12 +112,26 @@ func (b *Bundle) Has(key string) bool {
 	if b == nil {
 		return false
 	}
-	_, ok := b.values[key]
-	return ok
+	if _, ok := b.values[key]; ok {
+		return true
+	}
+	return b.fallback.Has(key)
 }
 
-// T returns the string for a key with its placeholders filled in. An
-// unknown key returns the key itself, which is visible in a page and
+// lookup finds a key in this bundle or, failing that, in en_US.
+func (b *Bundle) lookup(key string) (string, bool) {
+	if b == nil {
+		return "", false
+	}
+	if v, ok := b.values[key]; ok {
+		return v, true
+	}
+	return b.fallback.lookup(key)
+}
+
+// T returns the string for a key with its placeholders filled in. A key
+// this bundle is missing is taken from en_US (PLAN §9 R05); a key no
+// bundle has returns the key itself, which is visible in a page and
 // greppable, rather than an empty string that hides the mistake.
 //
 // Placeholders are BlogCFC's `{1}`-style, one-based: T("hi", "Ray") turns
@@ -77,7 +141,7 @@ func (b *Bundle) T(key string, args ...any) string {
 	if b == nil {
 		return key
 	}
-	v, ok := b.values[key]
+	v, ok := b.lookup(key)
 	if !ok {
 		return key
 	}

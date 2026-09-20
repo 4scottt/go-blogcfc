@@ -27,6 +27,7 @@ type pageData struct {
 	ContactURL string
 	RSSURL     string
 	CSSURL     string
+	CodeCSSURL string
 	Version    string
 
 	// Sidebar is the rendered pods column, dropped into ul#sidebar by the
@@ -120,6 +121,7 @@ func (m *Module) newPage(r *http.Request, additionalTitle string) pageData {
 		ContactURL:      base + "/contact",
 		RSSURL:          base + "/rss",
 		CSSURL:          base + "/static/css/site.css",
+		CodeCSSURL:      base + "/static/css/code.css",
 		Version:         Version,
 		Sidebar:         m.sidebar(r),
 	}

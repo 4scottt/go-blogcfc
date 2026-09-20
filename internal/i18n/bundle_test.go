@@ -71,7 +71,7 @@ func TestBundleLoadsBlogCFCStrings(t *testing.T) {
 }
 
 func TestBundleUnknownKeyReturnsTheKey(t *testing.T) {
-	b := New("de_DE") // every locale is en_US in M1
+	b := New("de_DE") // a real bundle, with en_US behind it
 	if got := b.T("no.such.key"); got != "no.such.key" {
 		t.Errorf("T(unknown) = %q, want the key back", got)
 	}
