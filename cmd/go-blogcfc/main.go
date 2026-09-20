@@ -231,10 +231,12 @@ func serve() error {
 	go releaser.Run(ctx, time.Minute)
 	legacyModule := legacy.New(cfg)
 	sitemapModule := feeds.NewSitemap(cfg, st, settings)
+	rssModule := feeds.NewRSS(cfg, st, settings)
+	rssModule.Cache = blogCache
 
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           app.New(cfg, st, settings, publicModule, podsModule, adminModule, legacyModule, sitemapModule),
+		Handler:           app.New(cfg, st, settings, publicModule, podsModule, adminModule, legacyModule, sitemapModule, rssModule),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,

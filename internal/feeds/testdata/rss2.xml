@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+<title>Ray&apos;s Blog &amp; Friends</title>
+<link>http://blog.example</link>
+<description>Notes on &lt;coldfusion&gt; and café life</description>
+<language>en-us</language>
+<pubDate>Sat, 19 Sep 2026 05:00:00 -0700</pubDate>
+<lastBuildDate>Sat, 04 Jul 2026 11:00:00 -0700</lastBuildDate>
+<generator>go-blogcfc</generator>
+<docs>http://blogs.law.harvard.edu/tech/rss</docs>
+<managingEditor>owner@example.com</managingEditor>
+<webMaster>owner@example.com</webMaster>
+<media:thumbnail url="http://blog.example/images/cover.png" />
+<media:keywords>cfml,go,legacy</media:keywords>
+<itunes:subtitle>A podcast subtitle</itunes:subtitle>
+<itunes:summary>A podcast summary</itunes:summary>
+<itunes:keywords>cfml,go,legacy</itunes:keywords>
+<itunes:author>Ray Camden</itunes:author>
+<itunes:owner>
+<itunes:email>owner@example.com</itunes:email>
+<itunes:name>Ray Camden</itunes:name>
+</itunes:owner>
+<itunes:image href="http://blog.example/images/cover.png" />
+<itunes:explicit>no</itunes:explicit>
+<image>
+<url>http://blog.example/images/cover.png</url>
+<title>Ray&apos;s Blog &amp; Friends</title>
+<link>http://blog.example</link>
+</image>
+<item>
+<title>Summer &amp; &lt;b&gt;markup&lt;/b&gt; in a title</title>
+<link>http://blog.example/2026/7/4/summer-entry</link>
+<description>&lt;p&gt;Le café is open.&lt;/p&gt;</description>
+<category>Go</category>
+<pubDate>Sat, 04 Jul 2026 11:00:00 -0700</pubDate>
+<guid isPermaLink="true">http://blog.example/2026/7/4/summer-entry</guid>
+<author>owner@example.com (Ray Camden)</author>
+</item>
+<item>
+<title>No alias</title>
+<link>http://blog.example/?mode=entry&amp;entry=11111111-2222-4333-8444-555555555555</link>
+<description>&lt;p&gt;Id form.&lt;/p&gt;</description>
+<pubDate>Tue, 05 May 2026 09:00:00 -0700</pubDate>
+<guid isPermaLink="true">http://blog.example/?mode=entry&amp;entry=11111111-2222-4333-8444-555555555555</guid>
+<author>owner@example.com (Ray Camden)</author>
+</item>
+<item>
+<title>Winter entry</title>
+<link>http://blog.example/2026/2/28/winter-entry</link>
+<description>&lt;p&gt;A short winter body with an &amp; in it, and &lt;em&gt;markup&lt;/em&gt;.&lt;/p&gt;</description>
+<category>ColdFusion &amp; Friends</category>
+<category>Go</category>
+<pubDate>Sat, 28 Feb 2026 23:30:00 -0800</pubDate>
+<guid isPermaLink="true">http://blog.example/2026/2/28/winter-entry</guid>
+<author>owner@example.com (Ray Camden)</author>
+</item>
+</channel>
+</rss>

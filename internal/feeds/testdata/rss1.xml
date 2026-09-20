@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns="http://purl.org/rss/1.0/"
+>
+<channel rdf:about="http://blog.example">
+<title>Ray&apos;s Blog &amp; Friends</title>
+<description>Notes on &lt;coldfusion&gt; and café life</description>
+<link>http://blog.example</link>
+<items>
+<rdf:Seq>
+<rdf:li rdf:resource="http://blog.example/2026/7/4/second" />
+<rdf:li rdf:resource="http://blog.example/2026/2/28/first" />
+</rdf:Seq>
+</items>
+</channel>
+<item rdf:about="http://blog.example/2026/7/4/second">
+<title>Second</title>
+<description>&lt;p&gt;Second body.&lt;/p&gt;</description>
+<link>http://blog.example/2026/7/4/second</link>
+<dc:date>2026-07-04T11:00:00-07:00</dc:date>
+<dc:subject>Go</dc:subject>
+</item>
+<item rdf:about="http://blog.example/2026/2/28/first">
+<title>First</title>
+<description>&lt;p&gt;First body.&lt;/p&gt;</description>
+<link>http://blog.example/2026/2/28/first</link>
+<dc:date>2026-02-28T23:30:00-08:00</dc:date>
+<dc:subject>ColdFusion &amp; Friends</dc:subject>
+</item>
+</rdf:RDF>

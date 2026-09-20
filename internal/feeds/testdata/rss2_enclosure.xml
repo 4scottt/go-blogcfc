@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+<title>Ray&apos;s Blog &amp; Friends</title>
+<link>http://blog.example</link>
+<description>Notes on &lt;coldfusion&gt; and café life</description>
+<language>en-us</language>
+<pubDate>Sat, 19 Sep 2026 05:00:00 -0700</pubDate>
+<lastBuildDate>Fri, 11 Sep 2026 10:00:00 -0700</lastBuildDate>
+<generator>go-blogcfc</generator>
+<docs>http://blogs.law.harvard.edu/tech/rss</docs>
+<managingEditor>owner@example.com</managingEditor>
+<webMaster>owner@example.com</webMaster>
+<media:thumbnail url="http://blog.example/images/cover.png" />
+<media:keywords>cfml,go,legacy</media:keywords>
+<itunes:subtitle>A podcast subtitle</itunes:subtitle>
+<itunes:summary>A podcast summary</itunes:summary>
+<itunes:keywords>cfml,go,legacy</itunes:keywords>
+<itunes:author>Ray Camden</itunes:author>
+<itunes:owner>
+<itunes:email>owner@example.com</itunes:email>
+<itunes:name>Ray Camden</itunes:name>
+</itunes:owner>
+<itunes:image href="http://blog.example/images/cover.png" />
+<itunes:explicit>no</itunes:explicit>
+<image>
+<url>http://blog.example/images/cover.png</url>
+<title>Ray&apos;s Blog &amp; Friends</title>
+<link>http://blog.example</link>
+</image>
+<item>
+<title>Screenshot post</title>
+<link>http://blog.example/2026/9/11/screenshot-post</link>
+<description>&lt;p&gt;&lt;div class=&quot;autoImage&quot;&gt;&lt;img src=&quot;http://blog.example/enclosures/shot.png&quot; alt=&quot;&quot;&gt;&lt;/div&gt;A picture.&lt;/p&gt;</description>
+<pubDate>Fri, 11 Sep 2026 10:00:00 -0700</pubDate>
+<guid isPermaLink="true">http://blog.example/2026/9/11/screenshot-post</guid>
+<author>owner@example.com (Ray Camden)</author>
+<enclosure url="http://blog.example/enclosures/shot.png" length="1024" type="image/png" />
+</item>
+<item>
+<title>Podcast episode</title>
+<link>http://blog.example/2026/9/10/podcast-episode</link>
+<description>&lt;p&gt;Listen in.&lt;audio controls src=&quot;http://blog.example/enclosures/episode%207.mp3&quot;&gt;&lt;/audio&gt;&lt;/p&gt;</description>
+<pubDate>Thu, 10 Sep 2026 10:00:00 -0700</pubDate>
+<guid isPermaLink="true">http://blog.example/2026/9/10/podcast-episode</guid>
+<author>owner@example.com (Ray Camden)</author>
+<enclosure url="http://blog.example/enclosures/episode%207.mp3" length="4823174" type="audio/mpeg" />
+<itunes:author>Ray Camden</itunes:author>
+<itunes:explicit>no</itunes:explicit>
+<itunes:duration>00:31:12</itunes:duration>
+<itunes:keywords>cfml,go</itunes:keywords>
+<itunes:subtitle>Episode seven</itunes:subtitle>
+<itunes:summary>Seven is the one about feeds</itunes:summary>
+<itunes:image href="http://blog.example/images/cover.png" />
+</item>
+</channel>
+</rss>
