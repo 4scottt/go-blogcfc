@@ -59,7 +59,10 @@ jobs:
           npx --prefix scripts/.walk playwright install --with-deps chromium
       - name: walk
         env:
-          WALK_URL: http://127.0.0.1:8081
+          # Must match the stack's BLOG_BASE_URL: the app's absolute links
+          # (the comment form, permalinks) point there, and a different host
+          # is a different cookie origin for the walker's admin session.
+          WALK_URL: http://localhost:8081
           ADMIN_PASSWORD: admin
           WALK_BROWSER: chromium
           WALK_STEPS: "7"
