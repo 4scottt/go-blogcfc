@@ -67,6 +67,8 @@ jobs:
           WALK_BROWSER: chromium
           WALK_STEPS: "7"
         run: node scripts/walk.mjs
+      - name: memory after the walk
+        run: docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}'
       - name: app logs
         if: always()
         run: docker compose -f deploy/compose.yaml --profile app logs app | tail -100

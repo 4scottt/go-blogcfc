@@ -20,7 +20,6 @@ var pending = map[string]string{
 	"O03": "M6 telemetry",
 	"O04": "M6 telemetry",
 	"O05": "M6 base URL audit",
-	"O07": "M6 image workflow",
 }
 
 var (

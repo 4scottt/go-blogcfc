@@ -1,0 +1,93 @@
+# The container image: linux/amd64 and linux/arm64 in one OCI index on GHCR,
+# tagged from the git tag (v0.1.0) or `edge` on main. The index digest is
+# what the oldbox card pins (arm64 hosts pull by the index). A second job
+# checks the footprint contract on the amd64 build: FP: O07 — non-root,
+# DATA_DIR writable at runtime, under 30 MiB.
+name: image
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=edge,enable={{is_default_branch}}
+            type=sha
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          sbom: false
+      - name: index digest
+        run: |
+          echo "index digest: ${{ steps.build.outputs.digest }}"
+          {
+            echo "## Image"
+            echo
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}" | sed 's/^/  /'
+            echo "  index digest: ${{ steps.build.outputs.digest }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  footprint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build the amd64 image
+        run: docker build -f deploy/Dockerfile -t go-blogcfc:ci .
+      - name: size under 30 MiB, runs as 65532
+        run: |
+          size=$(docker image inspect go-blogcfc:ci --format '{{.Size}}')
+          user=$(docker image inspect go-blogcfc:ci --format '{{.Config.User}}')
+          echo "size: $size bytes, user: $user"
+          test "$size" -lt 31457280
+          test "$user" = "65532"
+      - name: start the stack
+        run: |
+          docker compose -f deploy/compose.yaml --profile app up -d --build
+          for i in $(seq 1 60); do curl -fsS http://localhost:8081/health && break; sleep 2; done
+          curl -fsS http://localhost:8081/health
+      - name: DATA_DIR is writable at runtime (an image upload lands and serves)
+        run: |
+          printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' | base64 -d > dot.png
+          curl -fsS -c cj -b cj -o /dev/null -d 'username=admin&password=admin&login=Login' http://localhost:8081/admin/login
+          curl -fsS -b cj -F image=@dot.png -o upload.html http://localhost:8081/admin/images/upload
+          url=$(grep -o 'http://localhost:8081/images/uploads/[^"<>& ]*' upload.html | head -1)
+          echo "uploaded: $url"
+          test -n "$url"
+          curl -fsS -o /dev/null "$url"
+      - name: memory after a few requests
+        run: |
+          for i in $(seq 1 20); do curl -fsS -o /dev/null http://localhost:8081/; done
+          docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}'
+      - name: app logs
+        if: always()
+        run: docker compose -f deploy/compose.yaml --profile app logs app | tail -50
