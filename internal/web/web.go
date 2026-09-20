@@ -103,6 +103,8 @@ func (m *Module) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /", m.handleSES)
 	m.routesEntry(mux)
 	m.routesExtra(mux)
+	m.routesComments(mux)
+	m.routesSubscriptions(mux)
 }
 
 // reservedSegments are the first path segments later milestones own; a
