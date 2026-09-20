@@ -1,0 +1,16 @@
+{{define "content"}}
+<div class="post">
+ <div class="post-header">
+  <h3 class="post-title">{{.Heading}}</h3>
+ </div>
+ <div class="post-content">
+  <p class="slideshow-image"><img src="{{.ImageURL}}" alt="{{.Alt}}" /></p>
+{{with .Caption}}  <p class="slideshow-caption"><b>{{.}}</b></p>
+{{end}}  <p class="pager slideshow-pager">
+   {{if .PrevURL}}<a href="{{.PrevURL}}">Previous</a>{{else}}Previous{{end}}
+   ~
+   {{if .NextURL}}<a href="{{.NextURL}}">Next</a>{{else}}Next{{end}}
+  </p>
+ </div>
+</div>
+{{end}}

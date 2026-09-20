@@ -1,0 +1,40 @@
+{{define "content"}}
+<div class="post">
+ <div class="post-header">
+  <h3 class="post-title">{{.Heading}}</h3>
+ </div>
+ <div class="post-content">
+{{if .Sent}}
+  <p class="send-sent">{{.SentMessage}}</p>
+{{else}}
+  <p>{{.Intro}}</p>
+{{if .Errors}}
+  <p class="error-heading"><b>{{.ErrorHeading}}:</b></p>
+  <ul class="error">
+{{range .Errors}}   <li>{{.}}</li>
+{{end}}  </ul>
+{{end}}
+  <form action="{{.ActionURL}}" method="post" id="send-form">
+   <fieldset id="sendForm">
+    <div>
+     <label for="email">{{.EmailLabel}}</label><br />
+     <input type="text" id="email" name="email" value="{{.Email}}" size="40" />
+    </div>
+    <div>
+     <label for="remail">{{.REmailLabel}}</label><br />
+     <input type="text" id="remail" name="remail" value="{{.REmail}}" size="40" />
+    </div>
+    <div>
+     <label for="notes">{{.NotesLabel}}</label><br />
+     <textarea id="notes" name="notes" rows="6" cols="45">{{.Notes}}</textarea>
+    </div>
+    {{/* antispam: M3 -- as on the contact form (PLAN §11 "Antispam"). */}}
+    <div>
+     <input type="submit" id="submit" name="send" value="{{.SubmitLabel}}" />
+    </div>
+   </fieldset>
+  </form>
+{{end}}
+ </div>
+</div>
+{{end}}

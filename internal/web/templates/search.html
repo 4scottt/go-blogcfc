@@ -1,0 +1,38 @@
+{{define "content"}}
+<div class="post">
+ <div class="post-header">
+  <h3 class="post-title">{{.Heading}}</h3>
+ </div>
+ <div class="post-content">
+  <form action="{{.ActionURL}}" method="post" id="search-form">
+   <p>
+    <label for="searchterm">{{.Prompt}}</label>
+    <input type="text" id="searchterm" name="search" value="{{.Term}}" size="30" />
+    <label for="searchcategory">in</label>
+    <select name="category" id="searchcategory">
+     <option value=""{{if not .CategoryID}} selected="selected"{{end}}>all categories</option>
+{{range .Categories}}     <option value="{{.ID}}"{{if .Selected}} selected="selected"{{end}}>{{.Name}}</option>
+{{end}}    </select>
+    <input type="submit" id="dosearch" name="dosearch" value="{{.SubmitLabel}}" />
+   </p>
+  </form>
+{{if .Searched}}
+  <p class="search-count">{{.ResultCount}}</p>
+{{range .Results}}
+  <div class="search-result">
+   <h4 class="search-title"><a href="{{.URL}}">{{.Title}}</a></h4>
+   <p class="search-posted">{{.Posted}}</p>
+   <p class="search-excerpt">{{.Excerpt}}</p>
+  </div>
+{{end}}
+{{if .ShowPager}}
+  <p class="pager search-pager">
+   {{if .PrevURL}}<a href="{{.PrevURL}}">Previous Results</a>{{else}}Previous Entries{{end}}
+   -
+   {{if .NextURL}}<a href="{{.NextURL}}">Next Results</a>{{else}}Next Entries{{end}}
+  </p>
+{{end}}
+{{end}}
+ </div>
+</div>
+{{end}}
