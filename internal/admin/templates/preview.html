@@ -1,0 +1,29 @@
+{{define "content"}}
+<style>
+/* The preview is the entry as a reader meets it, inside the admin frame
+   (PLAN §9 A10). Nothing here has been saved. */
+#previewEntry { border: 1px solid #d8d2c0; padding: 14px 18px; background: #fff; }
+#previewEntry h2 { margin-top: 0; }
+.note { color: #7b6d55; }
+</style>
+
+<p class="note" id="previewnotice">This is a preview. Nothing has been saved yet.</p>
+
+<div id="previewEntry" class="previewEntry">
+	<h2 id="previewtitle">{{.Page.EntryTitle}}</h2>
+	<p class="note">
+		Posted at {{.Page.Posted}}{{if .Page.Author}} by {{.Page.Author}}{{end}}
+		{{if .Page.Categories}}<br>Categories: {{range $i, $c := .Page.Categories}}{{if $i}}, {{end}}{{$c}}{{end}}{{end}}
+		{{if .Page.Enclosure}}<br>Enclosure: {{.Page.Enclosure}}{{end}}
+	</p>
+	<div id="previewbody">{{.Page.Body}}</div>
+</div>
+
+<form id="previewForm" method="post" action="{{.Page.Action}}">
+{{range .Page.Hidden}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">
+{{end}}<p>
+	<input type="submit" name="return" value="Return">
+	<input type="submit" name="save" value="Save">
+</p>
+</form>
+{{end}}

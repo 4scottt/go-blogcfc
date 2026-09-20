@@ -1,0 +1,35 @@
+{{define "content"}}
+<style>
+table.rows { border-collapse: collapse; width: 100%; }
+table.rows th, table.rows td { border-bottom: 1px solid #e3ddca; padding: 5px 8px; text-align: left; }
+.filter { margin: 0 0 16px; }
+.filter label { font-weight: bold; margin-right: 4px; }
+.note { color: #7b6d55; }
+</style>
+
+<form id="downloadsFilter" class="filter" method="get" action="/admin/downloads">
+	<label for="from">From</label>
+	<input type="date" id="from" name="from" value="{{.Page.From}}">
+	<label for="to">To</label>
+	<input type="date" id="to" name="to" value="{{.Page.To}}">
+	<input type="submit" name="filter" value="Show Downloads">
+</form>
+
+{{if .Page.Rows}}
+<p class="note">{{.Page.Total}} download(s) between {{.Page.From}} and {{.Page.To}}.</p>
+<table class="rows" id="downloadsTable">
+	<tr><th>Date</th><th>Entry</th><th>File</th><th>IP</th><th>Online</th></tr>
+	{{range .Page.Rows}}
+	<tr>
+		<td>{{.When}}</td>
+		<td><a href="{{.Link}}">{{.Entry}}</a></td>
+		<td>{{.File}}</td>
+		<td>{{.IP}}</td>
+		<td>{{if .Online}}Yes{{else}}No{{end}}</td>
+	</tr>
+	{{end}}
+</table>
+{{else}}
+<p id="nodownloads" class="note">No downloads between {{.Page.From}} and {{.Page.To}}.</p>
+{{end}}
+{{end}}

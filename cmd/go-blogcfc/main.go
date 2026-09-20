@@ -27,6 +27,7 @@ import (
 	"github.com/4scottt/go-blogcfc/internal/admin"
 	"github.com/4scottt/go-blogcfc/internal/app"
 	"github.com/4scottt/go-blogcfc/internal/auth"
+	"github.com/4scottt/go-blogcfc/internal/cache"
 	"github.com/4scottt/go-blogcfc/internal/config"
 	"github.com/4scottt/go-blogcfc/internal/feeds"
 	"github.com/4scottt/go-blogcfc/internal/legacy"
@@ -204,6 +205,14 @@ func serve() error {
 	publicModule.Mail = sender
 	podsModule := pods.New(cfg, st, settings, sender)
 	publicModule.Sidebar = podsModule.Sidebar
+
+	// One in-process cache for the home page and the pods; every admin
+	// write and ?reinit=1 flush it (PLAN §11 "Caching", A29).
+	blogCache := cache.New()
+	publicModule.Cache = blogCache
+	podsModule.Cache = blogCache
+	adminModule.Reinit = blogCache.Flush
+	adminModule.Flush = blogCache.Flush
 
 	// Release side effects (mail subscribers, pings, the sweep for scheduled
 	// entries) and comment notifications, hooked into the admin.

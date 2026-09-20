@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/4scottt/go-blogcfc/internal/cache"
 	"github.com/4scottt/go-blogcfc/internal/config"
 	"github.com/4scottt/go-blogcfc/internal/i18n"
 	"github.com/4scottt/go-blogcfc/internal/mail"
@@ -54,6 +55,10 @@ type Module struct {
 	// Mail is how contact, send and the subscribe pod send; main.go sets it
 	// (a log sender until SMTP lands with M3). Nil means sending fails.
 	Mail mail.Sender
+	// Cache is the blog's one in-process cache (PLAN §11 "Caching",
+	// §9 A29). main.go sets it and gives the admin its Flush; nil means
+	// nothing is cached, which is how every test that predates it runs.
+	Cache *cache.Cache
 
 	cfg      *config.Config
 	store    *store.Store

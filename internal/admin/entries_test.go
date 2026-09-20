@@ -1,15 +1,94 @@
 package admin_test
 
 import (
+	"bytes"
 	"context"
+	"mime/multipart"
 	"net/http"
+	"net/http/cookiejar"
+	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/4scottt/go-blogcfc/internal/admin"
+	"github.com/4scottt/go-blogcfc/internal/auth"
+	"github.com/4scottt/go-blogcfc/internal/cache"
+	"github.com/4scottt/go-blogcfc/internal/config"
+	"github.com/4scottt/go-blogcfc/internal/pods"
 	"github.com/4scottt/go-blogcfc/internal/store"
+	"github.com/4scottt/go-blogcfc/internal/testdb"
+	"github.com/4scottt/go-blogcfc/internal/web"
 )
+
+// newUploadHarness is the admin harness with an uploads root of its
+// own: the enclosure screens write files, and the shared harness builds
+// its Config without a DATA_DIR (admin_test.go). It returns the module
+// and that directory.
+func newUploadHarness(t *testing.T) (*harness, string) {
+	t.Helper()
+	dir := t.TempDir()
+	st := testdb.New(t)
+
+	cfg := &config.Config{Port: 8080, BlogBaseURL: "http://127.0.0.1:8080",
+		SessionSecret: "test-session-secret", DataDir: dir}
+	settings := config.NewSettings(st, cfg)
+	if err := settings.Reload(context.Background()); err != nil {
+		t.Fatalf("settings reload: %v", err)
+	}
+	sessions := auth.New(cfg.SessionSecret, false, st)
+	m := admin.New(cfg, st, settings, sessions)
+
+	mux := http.NewServeMux()
+	m.Routes(mux)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("cookiejar: %v", err)
+	}
+	client := &http.Client{
+		Jar:           jar,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+	return &harness{t: t, module: m, store: st, settings: settings, server: srv, client: client}, dir
+}
+
+// postMultipart posts the editor's form as a browser does, with one
+// file part: the enclosure field (PLAN §9 A07).
+func (h *harness) postMultipart(path string, form url.Values, fileField, fileName string, content []byte) (*http.Response, string) {
+	h.t.Helper()
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	for name, values := range form {
+		for _, v := range values {
+			if err := mw.WriteField(name, v); err != nil {
+				h.t.Fatalf("write field %s: %v", name, err)
+			}
+		}
+	}
+	if fileField != "" {
+		part, err := mw.CreateFormFile(fileField, fileName)
+		if err != nil {
+			h.t.Fatalf("create file part: %v", err)
+		}
+		if _, err := part.Write(content); err != nil {
+			h.t.Fatalf("write file part: %v", err)
+		}
+	}
+	if err := mw.Close(); err != nil {
+		h.t.Fatalf("close multipart: %v", err)
+	}
+	resp, err := h.client.Post(h.server.URL+path, mw.FormDataContentType(), &buf)
+	if err != nil {
+		h.t.Fatalf("POST %s: %v", path, err)
+	}
+	return resp, readBody(h.t, resp)
+}
 
 // postForm posts a form to an admin path with the harness's cookie jar.
 func (h *harness) postForm(path string, form url.Values) (*http.Response, string) {
@@ -303,14 +382,18 @@ func TestFP_A05_EntryCreateEditMoreSplitCategoriesNewCategoryAliasAndPostedZone(
 	for _, want := range []string{`name="title"`, `name="body"`, `name="categories"`, `name="newcategory"`,
 		`name="posted"`, `name="alias"`, `name="allowcomments"`, `name="sendemail"`, `name="released"`,
 		`name="subtitle"`, `name="keywords"`, `name="summary"`, `name="duration"`,
-		`value="Save"`, `id="cancel" href="/admin/entries"`, "Related Entries", "Comments",
-		"Available in a later milestone"} {
+		`value="Save"`, `value="Preview"`, `id="cancel" href="/admin/entries"`,
+		"Related Entries", "Comments"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the entry editor is missing %s", want)
 		}
 	}
-	if strings.Contains(body, `type="file"`) {
-		t.Error("the editor offers an enclosure upload, which is a later milestone")
+	// M4 filled the tabs the M1 editor only sketched (A07-A11).
+	if strings.Contains(body, "Available in a later milestone") {
+		t.Error("the editor still shows a later-milestone placeholder")
+	}
+	if !strings.Contains(body, `type="file" id="enclosure" name="enclosure"`) {
+		t.Error("the editor has no enclosure upload")
 	}
 
 	// A body that starts with <more/> is refused, and nothing is written.
@@ -428,5 +511,321 @@ func TestFP_A06_FlagsAndDraftReleasedWithPastDateGetsPostedNow(t *testing.T) {
 	resp, body := h.postForm("/admin/entries/new", url.Values{"title": {"  "}, "body": {"b"}, "save": {"Save"}})
 	if resp.StatusCode != http.StatusOK || !strings.Contains(body, "must include a title") {
 		t.Errorf("an empty title: status %d, want the form back with a message", resp.StatusCode)
+	}
+}
+
+// enclosurePNG is a one-pixel PNG: enough for the content sniffer.
+var enclosurePNG = []byte{
+	0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a,
+	0x00, 0x00, 0x00, 0x0d, 'I', 'H', 'D', 'R',
+	0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+	0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89,
+}
+
+// entryFormValues is the editor's form without its file part.
+func entryFormValues(title, alias string) url.Values {
+	return url.Values{
+		"title":         {title},
+		"body":          {"The body"},
+		"alias":         {alias},
+		"posted":        {time.Now().UTC().Format("2006-01-02 15:04")},
+		"allowcomments": {"1"},
+		"save":          {"Save"},
+	}
+}
+
+// TestFP_A07_EnclosureUploadUniqueNamesMimetypeSizeDelete covers PLAN
+// §9 A07 (admin/entry.cfm): an upload lands under DATA_DIR/enclosures
+// with a name nobody else has, its size and type are recorded, the
+// editor offers the download link and the delete box, and deleting
+// clears the fields and removes the file.
+func TestFP_A07_EnclosureUploadUniqueNamesMimetypeSizeDelete(t *testing.T) {
+	h, dir := newUploadHarness(t)
+	h.user("admin", "Admin")
+	h.login("admin")
+	encDir := filepath.Join(dir, "enclosures")
+	audio := []byte("not really an mp3, but the extension decides the type")
+
+	resp, _ := h.postMultipart("/admin/entries/new", entryFormValues("Episode one", "episode-one"),
+		"enclosure", "show notes.mp3", audio)
+	redirectedTo(t, resp, "/admin/entries?saved=1")
+
+	first := h.entryByAlias("episode-one")
+	if first.Enclosure != "show notes.mp3" {
+		t.Fatalf("enclosure = %q, want the uploaded file's name", first.Enclosure)
+	}
+	if first.FileSize != int64(len(audio)) {
+		t.Errorf("filesize = %d, want %d", first.FileSize, len(audio))
+	}
+	if first.MimeType != "audio/mpeg" {
+		t.Errorf("mimetype = %q, want audio/mpeg", first.MimeType)
+	}
+	if got, err := os.ReadFile(filepath.Join(encDir, first.Enclosure)); err != nil || !bytes.Equal(got, audio) {
+		t.Fatalf("the file under DATA_DIR/enclosures is %v (err %v)", string(got), err)
+	}
+
+	// A second upload of the same name keeps both files, as the as-is
+	// asked cffile for with nameconflict="makeunique".
+	resp, _ = h.postMultipart("/admin/entries/new", entryFormValues("Episode two", "episode-two"),
+		"enclosure", "show notes.mp3", audio)
+	redirectedTo(t, resp, "/admin/entries?saved=1")
+	second := h.entryByAlias("episode-two")
+	if second.Enclosure == first.Enclosure {
+		t.Errorf("the second upload took the first one's name (%q)", second.Enclosure)
+	}
+	if second.Enclosure != "show notes1.mp3" {
+		t.Errorf("the unique name is %q, want show notes1.mp3", second.Enclosure)
+	}
+	if _, err := os.Stat(filepath.Join(encDir, first.Enclosure)); err != nil {
+		t.Errorf("the first file is gone: %v", err)
+	}
+
+	// A file with no extension is typed by its content.
+	resp, _ = h.postMultipart("/admin/entries/new", entryFormValues("Episode three", "episode-three"),
+		"enclosure", "picture", enclosurePNG)
+	redirectedTo(t, resp, "/admin/entries?saved=1")
+	if third := h.entryByAlias("episode-three"); third.MimeType != "image/png" {
+		t.Errorf("a PNG with no extension is typed %q, want image/png", third.MimeType)
+	}
+
+	// A traversing name cannot leave the folder.
+	resp, _ = h.postMultipart("/admin/entries/new", entryFormValues("Episode four", "episode-four"),
+		"enclosure", "../../escape.mp3", audio)
+	redirectedTo(t, resp, "/admin/entries?saved=1")
+	fourth := h.entryByAlias("episode-four")
+	if strings.ContainsAny(fourth.Enclosure, `/\`) {
+		t.Errorf("enclosure = %q, want a plain file name", fourth.Enclosure)
+	}
+	if _, err := os.Stat(filepath.Join(encDir, fourth.Enclosure)); err != nil {
+		t.Errorf("the escaping upload did not land in the enclosures folder: %v", err)
+	}
+
+	// The editor shows what is attached, the download link and the box
+	// that takes it away.
+	_, body := h.get("/admin/entries/" + first.ID)
+	for _, want := range []string{
+		"show notes.mp3",
+		`name="deleteenclosure"`,
+		`name="enclosure"`,
+		`name="manualenclosure"`,
+		"/download/" + first.ID + "/show%20notes.mp3",
+		`enctype="multipart/form-data"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the editor does not carry %q", want)
+		}
+	}
+
+	// Deleting clears the three fields and removes the file.
+	form := entryFormValues("Episode one", "episode-one")
+	form.Set("oldenclosure", first.Enclosure)
+	form.Set("oldfilesize", "12")
+	form.Set("oldmimetype", "audio/mpeg")
+	form.Set("deleteenclosure", "1")
+	resp, _ = h.postForm("/admin/entries/"+first.ID, form)
+	redirectedTo(t, resp, "/admin/entries?saved=1")
+
+	cleared := h.entryByAlias("episode-one")
+	if cleared.Enclosure != "" || cleared.FileSize != 0 || cleared.MimeType != "" {
+		t.Errorf("after the delete the entry still has %q/%d/%q", cleared.Enclosure, cleared.FileSize, cleared.MimeType)
+	}
+	if _, err := os.Stat(filepath.Join(encDir, "show notes.mp3")); !os.IsNotExist(err) {
+		t.Errorf("the deleted file is still on disk (%v)", err)
+	}
+	if _, err := os.Stat(filepath.Join(encDir, second.Enclosure)); err != nil {
+		t.Errorf("deleting one entry's enclosure took another's: %v", err)
+	}
+
+	// A file already in the folder can be named by hand, as the as-is
+	// "Manually Set Enclosure" field did.
+	if err := os.WriteFile(filepath.Join(encDir, "byhand.pdf"), []byte("%PDF-1.4"), 0o644); err != nil {
+		t.Fatalf("write byhand.pdf: %v", err)
+	}
+	form = entryFormValues("Episode one", "episode-one")
+	form.Set("manualenclosure", "byhand.pdf")
+	resp, _ = h.postForm("/admin/entries/"+first.ID, form)
+	redirectedTo(t, resp, "/admin/entries?saved=1")
+	manual := h.entryByAlias("episode-one")
+	if manual.Enclosure != "byhand.pdf" || manual.MimeType != "application/pdf" || manual.FileSize != 8 {
+		t.Errorf("manual enclosure = %q/%q/%d, want byhand.pdf/application/pdf/8",
+			manual.Enclosure, manual.MimeType, manual.FileSize)
+	}
+
+	// A manual name that is not there is refused, and nothing changes.
+	form = entryFormValues("Episode one", "episode-one")
+	form.Set("oldenclosure", "byhand.pdf")
+	form.Set("manualenclosure", "nothing-like-it.mp3")
+	_, body = h.postForm("/admin/entries/"+first.ID, form)
+	if !strings.Contains(body, "nothing-like-it.mp3") || !strings.Contains(body, "enclosures folder") {
+		t.Error("a manual name with no file behind it was not reported")
+	}
+	if still := h.entryByAlias("episode-one"); still.Enclosure != "byhand.pdf" {
+		t.Errorf("the refused save changed the enclosure to %q", still.Enclosure)
+	}
+}
+
+// TestFP_A08_ITunesFieldsSaveAndRenderOnce covers PLAN §9 A08: the four
+// podcast fields are stored, each clipped to its column, and the editor
+// renders every one of them exactly once -- admin/entry.cfm printed the
+// keywords field twice, so the second one always won on save.
+func TestFP_A08_ITunesFieldsSaveAndRenderOnce(t *testing.T) {
+	h := newHarness(t)
+	h.user("admin", "Admin")
+	h.login("admin")
+
+	form := entryFormValues("A podcast", "a-podcast")
+	form.Set("subtitle", strings.Repeat("s", 120))
+	form.Set("keywords", strings.Repeat("k", 120))
+	form.Set("summary", strings.Repeat("u", 300))
+	form.Set("duration", "01:02:03456")
+	resp, _ := h.postForm("/admin/entries/new", form)
+	redirectedTo(t, resp, "/admin/entries?saved=1")
+
+	e := h.entryByAlias("a-podcast")
+	if len(e.Subtitle) != 100 || len(e.Keywords) != 100 || len(e.Summary) != 255 || len(e.Duration) != 10 {
+		t.Errorf("stored lengths are %d/%d/%d/%d, want 100/100/255/10",
+			len(e.Subtitle), len(e.Keywords), len(e.Summary), len(e.Duration))
+	}
+	if e.Duration != "01:02:0345" {
+		t.Errorf("duration = %q, want the first ten characters", e.Duration)
+	}
+
+	_, body := h.get("/admin/entries/" + e.ID)
+	for _, field := range []string{"subtitle", "keywords", "summary", "duration"} {
+		if n := strings.Count(body, `name="`+field+`"`); n != 1 {
+			t.Errorf("the editor renders %s %d times, want once", field, n)
+		}
+	}
+	if !strings.Contains(body, strings.Repeat("k", 100)) {
+		t.Error("the editor does not show the stored keywords")
+	}
+
+	// Editing something else leaves the podcast fields alone when they
+	// come back unchanged.
+	form = entryFormValues("A podcast", "a-podcast")
+	form.Set("subtitle", e.Subtitle)
+	form.Set("keywords", e.Keywords)
+	form.Set("summary", e.Summary)
+	form.Set("duration", e.Duration)
+	form.Set("title", "A podcast, renamed")
+	resp, _ = h.postForm("/admin/entries/"+e.ID, form)
+	redirectedTo(t, resp, "/admin/entries?saved=1")
+	again := h.entryByAlias("a-podcast")
+	if again.Keywords != e.Keywords || again.Duration != e.Duration {
+		t.Errorf("a re-save changed the podcast fields to %q/%q", again.Keywords, again.Duration)
+	}
+}
+
+// TestFP_A29_CacheFlushedOnWriteAndReinit covers PLAN §9 A29 and §11
+// "Caching" at the level that matters: the public home page is served
+// from the cache until an admin write flushes it, and `?reinit=1`
+// flushes it by hand. The cache's own behaviour is in internal/cache.
+func TestFP_A29_CacheFlushedOnWriteAndReinit(t *testing.T) {
+	h := newHarness(t)
+	h.user("admin", "Admin")
+	ctx := context.Background()
+
+	c := cache.New()
+	h.module.Flush = c.Flush
+	h.module.Reinit = c.Flush
+
+	cfg := &config.Config{Port: 8080, BlogBaseURL: "http://127.0.0.1:8080", SessionSecret: "test-session-secret"}
+	site := web.New(cfg, h.store, h.settings, nil)
+	site.Cache = c
+	podsModule := pods.New(cfg, h.store, h.settings, nil)
+	podsModule.Cache = c
+	site.Sidebar = podsModule.Sidebar
+	mux := http.NewServeMux()
+	site.Routes(mux)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	home := func() string {
+		t.Helper()
+		resp, err := http.Get(srv.URL + "/")
+		if err != nil {
+			t.Fatalf("GET /: %v", err)
+		}
+		return readBody(t, resp)
+	}
+
+	first := h.createEntry(&store.Entry{Title: "First post", Alias: "first-post", Body: "b",
+		Posted: time.Now().UTC().Add(-time.Hour), Username: "admin", Released: true})
+	if !strings.Contains(home(), first.Title) {
+		t.Fatal("the home page does not list the entry it should")
+	}
+	gen := c.Generation()
+
+	// A second entry written behind the cache's back is not on the page
+	// until something flushes: this is the cache doing its job.
+	h.createEntry(&store.Entry{Title: "Second post", Alias: "second-post", Body: "b",
+		Posted: time.Now().UTC().Add(-time.Minute), Username: "admin", Released: true})
+	if strings.Contains(home(), "Second post") {
+		t.Error("the home page was not cached: a direct write showed up at once")
+	}
+
+	// An entry saved through the admin flushes it (PLAN §9 A29).
+	h.login("admin")
+	form := entryFormValues("Third post", "third-post")
+	form.Set("released", "1")
+	resp, _ := h.postForm("/admin/entries/new", form)
+	redirectedTo(t, resp, "/admin/entries?saved=1")
+	if c.Generation() == gen {
+		t.Error("saving an entry did not flush the cache")
+	}
+	body := home()
+	if !strings.Contains(body, "Second post") || !strings.Contains(body, "Third post") {
+		t.Error("the home page still shows the cached list after an admin write")
+	}
+
+	// And so does the dashboard's ?reinit=1 (PLAN §8, §9 A02).
+	gen = c.Generation()
+	if err := h.store.CreateEntry(ctx, &store.Entry{Title: "Fourth post", Alias: "fourth-post", Body: "b",
+		Posted: time.Now().UTC(), Username: "admin", Released: true}); err != nil {
+		t.Fatalf("CreateEntry: %v", err)
+	}
+	h.get("/admin/?reinit=1")
+	if c.Generation() == gen {
+		t.Error("?reinit=1 did not flush the cache")
+	}
+	if !strings.Contains(home(), "Fourth post") {
+		t.Error("the home page is stale after ?reinit=1")
+	}
+
+	// Deleting through the admin flushes too.
+	gen = c.Generation()
+	resp, _ = h.postForm("/admin/entries/delete", url.Values{"mark": {first.ID}})
+	redirectedTo(t, resp, "/admin/entries?deleted=1")
+	if c.Generation() == gen {
+		t.Error("deleting an entry did not flush the cache")
+	}
+	if strings.Contains(home(), "First post") {
+		t.Error("a deleted entry is still on the home page")
+	}
+}
+
+// TestFP_A11_CrashRecoveryDraftScriptOnNewEntries covers what can be
+// checked server-side of PLAN §9 A11: the new-entry editor carries the
+// script that keeps the title and body in this browser, and the editor
+// for an entry that is already saved does not (admin/entry.cfm ran its
+// saveText only for `id=0`). A11 is a walk row: that the draft comes
+// back after a crash is for scripts/walk.mjs to show.
+func TestFP_A11_CrashRecoveryDraftScriptOnNewEntries(t *testing.T) {
+	h := newHarness(t)
+	h.user("admin", "Admin")
+	h.login("admin")
+
+	_, body := h.get("/admin/entries/new")
+	for _, want := range []string{"localStorage", "go-blogcfc.entry.draft", "var isNew = true"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the new-entry editor has no %q", want)
+		}
+	}
+
+	e := h.createEntry(&store.Entry{Title: "Saved already", Alias: "saved-already", Body: "b",
+		Posted: time.Now().UTC(), Username: "admin", Released: true})
+	_, body = h.get("/admin/entries/" + e.ID)
+	if !strings.Contains(body, "var isNew = false") {
+		t.Error("the editor for a saved entry does not switch the draft script off")
 	}
 }

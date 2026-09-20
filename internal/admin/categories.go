@@ -187,7 +187,7 @@ func (m *Module) categorySave(w http.ResponseWriter, r *http.Request) {
 			m.serverError(w, r, err)
 			return
 		default:
-			m.reinit()
+			m.flush()
 			http.Redirect(w, r, "/admin/categories?saved=1", http.StatusFound)
 			return
 		}
@@ -212,7 +212,7 @@ func (m *Module) categoryDelete(w http.ResponseWriter, r *http.Request) {
 		m.serverError(w, r, err)
 		return
 	}
-	m.reinit()
+	m.flush()
 	http.Redirect(w, r, "/admin/categories?deleted=1", http.StatusFound)
 }
 

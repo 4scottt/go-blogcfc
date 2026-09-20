@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/4scottt/go-blogcfc/internal/cache"
 	"github.com/4scottt/go-blogcfc/internal/config"
 	"github.com/4scottt/go-blogcfc/internal/i18n"
 	"github.com/4scottt/go-blogcfc/internal/mail"
@@ -57,6 +58,11 @@ var templateFS embed.FS
 // Module renders the pods. It is safe for concurrent use: everything it
 // keeps is read-only after New.
 type Module struct {
+	// Cache is the blog's one in-process cache (PLAN §11 "Caching").
+	// main.go sets it; nil means the sidebar is drawn afresh every
+	// request, which is what the pods' own tests want.
+	Cache *cache.Cache
+
 	cfg      *config.Config
 	store    *store.Store
 	settings *config.Settings
@@ -123,8 +129,30 @@ func (m *Module) base() string { return strings.TrimRight(m.cfg.BlogBaseURL, "/"
 
 // Sidebar renders every visible pod, in order, as the `li.block` items
 // that go inside the layout's `ul#sidebar` (PLAN §12).
+//
+// With a cache wired in, the column is kept per key: the path it was
+// drawn for and the month the calendar is showing are all a pod reads
+// off the request, so two readers of the same page get the same HTML
+// until a write flushes it (PLAN §11 "Caching", §9 A29).
 func (m *Module) Sidebar(r *http.Request) template.HTML {
-	return m.sidebar(m.newCtx(r))
+	if m.Cache == nil {
+		return m.sidebar(m.newCtx(r))
+	}
+	out, err := cache.Value(m.Cache, sidebarKey(r), func() (template.HTML, error) {
+		return m.sidebar(m.newCtx(r)), nil
+	})
+	if err != nil {
+		return m.sidebar(m.newCtx(r))
+	}
+	return out
+}
+
+// sidebarKey is what a cached sidebar varies by: the request path and
+// the calendar's `?year=&month=`, which is everything the pods read
+// from the request (pods/calendar.go).
+func sidebarKey(r *http.Request) string {
+	q := r.URL.Query()
+	return "pods:sidebar:" + r.URL.Path + "?" + q.Get("year") + "-" + q.Get("month")
 }
 
 func (m *Module) sidebar(c *podCtx) template.HTML {

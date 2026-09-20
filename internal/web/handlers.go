@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/4scottt/go-blogcfc/internal/cache"
 	"github.com/4scottt/go-blogcfc/internal/store"
 )
 
@@ -284,7 +285,7 @@ func (m *Module) renderListing(w http.ResponseWriter, r *http.Request, l listing
 	f.Offset = first - 1
 	f.Limit = max
 
-	entries, total, err := m.store.ListEntries(r.Context(), f)
+	entries, total, err := m.listEntries(r, l, f)
 	if err != nil {
 		m.serverError(w, r, err)
 		return
@@ -302,6 +303,48 @@ func (m *Module) renderListing(w http.ResponseWriter, r *http.Request, l listing
 	}
 	data.Prev, data.Next = m.pager(r, first, max, total)
 	m.render(w, "entries.html", http.StatusOK, data)
+}
+
+// homeCacheKey is the one cached listing: the front page as a visitor
+// who is not logged in sees it.
+const homeCacheKey = "web:home:entries"
+
+// homeListing is one page of the home page's entries, as the cache
+// keeps it. It is read-only once filled: several requests share it.
+type homeListing struct {
+	entries []store.Entry
+	total   int
+}
+
+// listEntries runs a listing's query, through the cache when the
+// listing is the plain home page of a visitor who is not signed in
+// (PLAN §11 "Caching", §9 A29). Every other view -- an archive, a
+// category, a page of the pager, an admin looking at drafts -- is
+// uncached, as BlogCFC's scopecache only ever held the front page.
+func (m *Module) listEntries(r *http.Request, l listing, f store.EntryFilter) ([]store.Entry, int, error) {
+	if !m.cacheableHome(r, l) {
+		return m.store.ListEntries(r.Context(), f)
+	}
+	got, err := cache.Value(m.Cache, homeCacheKey, func() (homeListing, error) {
+		entries, total, err := m.store.ListEntries(r.Context(), f)
+		return homeListing{entries: entries, total: total}, err
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return got.entries, got.total, nil
+}
+
+// cacheableHome reports whether this request is the one listing worth
+// caching: `/` with nothing in the query, nobody signed in, no
+// adminview and so no drafts in the answer.
+func (m *Module) cacheableHome(r *http.Request, l listing) bool {
+	return m.Cache != nil &&
+		r.URL.Path == "/" &&
+		r.URL.RawQuery == "" &&
+		l.additionalTitle == "" &&
+		!l.criteria &&
+		m.currentUser(r) == nil
 }
 
 // renderEntry is the one-entry view: body and morebody, no [more] link,

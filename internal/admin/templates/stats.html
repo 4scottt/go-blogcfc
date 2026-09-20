@@ -1,0 +1,32 @@
+{{define "content"}}
+<style>
+table.rows { border-collapse: collapse; width: 100%; margin: 0 0 24px; }
+table.rows th, table.rows td { border-bottom: 1px solid #e3ddca; padding: 5px 8px; text-align: left; }
+table.rows td.num, table.rows th.num { text-align: right; }
+.years { margin: 0 0 20px; }
+.note { color: #7b6d55; }
+</style>
+
+<p class="years" id="statsyears">
+	<a href="{{.Page.AllURL}}">All years</a>
+	{{range .Page.Years}} | <a href="/admin/stats/{{.}}">{{.}}</a>{{end}}
+</p>
+{{if .Page.Year}}<p class="note" id="statsyear">Showing {{.Page.Year}}.</p>{{end}}
+
+{{range .Page.Sections}}
+<h2 id="{{.ID}}">{{.Title}}</h2>
+{{if .Rows}}
+<table class="rows">
+	<tr><th>{{index .Head 0}}</th><th class="num">{{index .Head 1}}</th></tr>
+	{{range .Rows}}
+	<tr>
+		<td>{{if .URL}}<a href="{{.URL}}" rel="nofollow">{{.Label}}</a>{{else}}{{.Label}}{{end}}</td>
+		<td class="num">{{.Value}}</td>
+	</tr>
+	{{end}}
+</table>
+{{else}}
+<p class="note">Nothing to show.</p>
+{{end}}
+{{end}}
+{{end}}

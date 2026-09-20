@@ -214,7 +214,7 @@ func (m *Module) deleteMarked(r *http.Request) (int, error) {
 	if err := m.store.DeleteComments(r.Context(), ids); err != nil {
 		return 0, err
 	}
-	m.reinit()
+	m.flush()
 	return len(ids), nil
 }
 
@@ -313,7 +313,7 @@ func (m *Module) commentSave(w http.ResponseWriter, r *http.Request) {
 		m.serverError(w, r, err)
 		return
 	}
-	m.reinit()
+	m.flush()
 	http.Redirect(w, r, "/admin/comments?saved=1", http.StatusFound)
 }
 
@@ -358,7 +358,7 @@ func (m *Module) approveAndNotify(ctx context.Context, c *store.Comment) error {
 		return err
 	}
 	c.Moderated = true
-	m.reinit()
+	m.flush()
 
 	e, err := m.store.GetEntry(ctx, c.EntryID)
 	if errors.Is(err, store.ErrNotFound) {

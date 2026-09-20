@@ -12,10 +12,13 @@
 #entrytabs .ctrl { margin: 0 0 12px; }
 #entrytabs .ctrl label { display: block; font-weight: bold; }
 #entrytabs textarea { width: 100%; min-height: 320px; }
+#entrytabs select.wide { width: 100%; }
 a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; border-radius: 3px; background: #ece7d6; color: #241c14; }
 .errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
 .errors ul { margin: 6px 0 0; }
 .note { color: #7b6d55; }
+table.rows { border-collapse: collapse; width: 100%; }
+table.rows th, table.rows td { border-bottom: 1px solid #e3ddca; padding: 5px 8px; text-align: left; }
 </style>
 
 {{if .Page.Errors}}
@@ -30,7 +33,7 @@ a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; 
 	{{if .Page.ViewURL}}<a id="viewentry" href="{{.Page.ViewURL}}">View</a>{{end}}
 </p>
 
-<form id="editForm" method="post" action="{{.Page.Action}}">
+<form id="editForm" method="post" action="{{.Page.Action}}" enctype="multipart/form-data">
 <div id="entrytabs">
 	<ul class="tabs">
 		<li><a class="tablink active" href="#main">Main</a></li>
@@ -62,9 +65,6 @@ a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; 
 			<input type="text" id="newcategory" name="newcategory" value="{{.Page.NewCategory}}" maxlength="50">
 		</div>
 		{{end}}
-		<div class="ctrl">
-			<p id="enclosure-note" class="note">Enclosure: {{.Page.LaterMilestone}}.</p>
-		</div>
 	</div>
 
 	<div class="tab" id="additional">
@@ -95,6 +95,31 @@ a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; 
 			<span class="note">Your account may not release entries.</span>
 			{{end}}
 		</div>
+
+		<div class="ctrl" id="enclosurebox">
+			<label for="enclosure">Enclosure</label>
+			<input type="hidden" name="oldenclosure" value="{{.Page.Enclosure}}">
+			<input type="hidden" name="oldfilesize" value="{{.Page.Filesize}}">
+			<input type="hidden" name="oldmimetype" value="{{.Page.Mimetype}}">
+			{{if .Page.Enclosure}}
+			<p id="currentenclosure" class="note">
+				Current file: {{.Page.Enclosure}} ({{.Page.Filesize}} bytes, {{.Page.Mimetype}}).
+				{{if .Page.DownloadURL}}<br>Download link: <a href="{{.Page.DownloadURL}}">{{.Page.DownloadURL}}</a>{{end}}
+			</p>
+			<label for="deleteenclosure">Delete Enclosure</label>
+			<input type="checkbox" id="deleteenclosure" name="deleteenclosure" value="1">
+			<span class="note">Ticked, the file goes when you save.</span>
+			{{else}}
+			<p class="note">No enclosure. A download link appears once the entry is saved.</p>
+			{{end}}
+			<input type="file" id="enclosure" name="enclosure">
+		</div>
+		<div class="ctrl">
+			<label for="manualenclosure">Manually Set Enclosure</label>
+			<input type="text" id="manualenclosure" name="manualenclosure" value="{{.Page.ManualEnclosure}}" maxlength="255">
+			<span class="note">The name of a file already in the enclosures folder.</span>
+		</div>
+
 		<div class="ctrl">
 			<label for="subtitle">iTunes Subtitle</label>
 			<input type="text" id="subtitle" name="subtitle" value="{{.Page.Subtitle}}" maxlength="100" size="60">
@@ -115,17 +140,63 @@ a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; 
 
 	<div class="tab" id="related">
 		<h2>Related Entries</h2>
-		<p class="note">{{.Page.LaterMilestone}}.</p>
+		<p class="note">
+			Filter the blog's entries, then add the ones this entry belongs with.
+			Relating one entry to another relates it back: both pages show the link.
+		</p>
+		<div class="ctrl">
+			<label for="relatedtext">Filter By Text</label>
+			<input type="text" id="relatedtext" name="relatedtext" maxlength="100" size="40">
+		</div>
+		<div class="ctrl">
+			<label for="relatedcategory">Filter By Category</label>
+			<select id="relatedcategory" name="relatedcategory">
+				<option value="">Any category</option>
+			{{range .Page.Categories}}
+				<option value="{{.ID}}">{{.Name}}</option>
+			{{end}}
+			</select>
+			<button type="button" id="filterrelated" name="filterrelated">Filter Entries</button>
+		</div>
+		<div class="ctrl">
+			<label for="relatedresults">Matching Entries</label>
+			<select id="relatedresults" name="relatedresults" class="wide" size="6"></select>
+			<button type="button" id="addrelated" name="addrelated">Add Related Entry</button>
+		</div>
+		<div class="ctrl">
+			<label for="related">Current Related Entries</label>
+			<select id="related" name="related" class="wide" multiple size="6">
+			{{range .Page.Related}}
+				<option value="{{.ID}}" selected>{{.Title}}</option>
+			{{end}}
+			</select>
+			<button type="button" id="removerelated" name="removerelated">Remove Selected</button>
+		</div>
 	</div>
 
 	<div class="tab" id="comments">
 		<h2>Comments</h2>
-		<p class="note">{{.Page.LaterMilestone}}.</p>
+		{{if .Page.Comments}}
+		<table class="rows" id="entrycomments">
+			<tr><th>Posted</th><th>Name</th><th>Comment</th><th>Held</th></tr>
+			{{range .Page.Comments}}
+			<tr>
+				<td>{{.Posted}}</td>
+				<td><a href="{{.URL}}">{{.Name}}</a></td>
+				<td>{{.Excerpt}}</td>
+				<td>{{if .Moderated}}No{{else}}Yes{{end}}</td>
+			</tr>
+			{{end}}
+		</table>
+		{{else}}
+		<p class="note">{{if .Page.IsNew}}An entry has comments once it is saved and someone writes one.{{else}}No comments yet.{{end}}</p>
+		{{end}}
 	</div>
 </div>
 
 <p>
 	<a class="button" id="cancel" href="/admin/entries">Cancel</a>
+	<input type="submit" name="preview" value="Preview">
 	<input type="submit" name="save" value="Save">
 </p>
 </form>
@@ -154,6 +225,111 @@ a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; 
 		});
 	}
 	show("main");
+})();
+
+// The related-entries picker (PLAN §9 A09). The filter asks /admin/proxy
+// for matching entries as JSON; picking one adds an option to the
+// `related` multiselect, which is what the form submits. Every option in
+// that list is selected on submit, so the set saved is the set shown.
+(function () {
+	var form = document.getElementById("editForm");
+	var text = document.getElementById("relatedtext");
+	var cat = document.getElementById("relatedcategory");
+	var results = document.getElementById("relatedresults");
+	var chosen = document.getElementById("related");
+	if (!form || !text || !cat || !results || !chosen) return;
+	var proxy = {{.Page.ProxyURL}};
+	var self = {{.Page.ID}};
+
+	function search() {
+		var url = proxy + "?text=" + encodeURIComponent(text.value.replace(/^\s+|\s+$/g, "")) +
+			"&category=" + encodeURIComponent(cat.value) +
+			"&entry=" + encodeURIComponent(self);
+		fetch(url, { credentials: "same-origin", headers: { "Accept": "application/json" } })
+			.then(function (r) { return r.ok ? r.json() : []; })
+			.then(function (rows) {
+				results.innerHTML = "";
+				for (var i = 0; i < rows.length; i++) {
+					var o = document.createElement("option");
+					o.value = rows[i].id;
+					o.textContent = rows[i].title;
+					results.appendChild(o);
+				}
+			})
+			.catch(function () { /* a failed filter leaves the list alone */ });
+	}
+
+	function add() {
+		for (var i = 0; i < results.options.length; i++) {
+			var opt = results.options[i];
+			if (!opt.selected) continue;
+			var already = false;
+			for (var j = 0; j < chosen.options.length; j++) {
+				if (chosen.options[j].value === opt.value) { already = true; break; }
+			}
+			if (already) continue;
+			var add = document.createElement("option");
+			add.value = opt.value;
+			add.textContent = opt.textContent;
+			add.selected = true;
+			chosen.appendChild(add);
+		}
+	}
+
+	function remove() {
+		for (var i = chosen.options.length - 1; i >= 0; i--) {
+			if (chosen.options[i].selected) chosen.remove(i);
+		}
+	}
+
+	document.getElementById("filterrelated").addEventListener("click", search);
+	document.getElementById("addrelated").addEventListener("click", add);
+	document.getElementById("removerelated").addEventListener("click", remove);
+	results.addEventListener("dblclick", add);
+	text.addEventListener("keyup", search);
+	cat.addEventListener("change", search);
+	form.addEventListener("submit", function () {
+		for (var i = 0; i < chosen.options.length; i++) chosen.options[i].selected = true;
+	});
+})();
+
+// Crash-recovery draft (PLAN §9 A11). A new entry's title and body are
+// kept in this browser while they are typed and put back if the editor
+// is opened again empty; saving clears them. The as-is wrote two
+// cookies every five seconds (admin/entry.cfm's saveText), which sent
+// the whole draft to the server on every request.
+(function () {
+	var isNew = {{if .Page.IsNew}}true{{else}}false{{end}};
+	if (!isNew) return;
+	var form = document.getElementById("editForm");
+	var title = document.getElementById("title");
+	var body = document.getElementById("body");
+	if (!form || !title || !body) return;
+	var key = "go-blogcfc.entry.draft";
+
+	try {
+		var saved = JSON.parse(window.localStorage.getItem(key) || "null");
+		if (saved) {
+			if (!title.value) title.value = saved.title || "";
+			if (!body.value) body.value = saved.body || "";
+		}
+	} catch (e) { /* no storage, no draft */ }
+
+	function keep() {
+		try {
+			window.localStorage.setItem(key, JSON.stringify({ title: title.value, body: body.value }));
+		} catch (e) { /* private window, quota: the editor still works */ }
+	}
+	function drop() {
+		try { window.localStorage.removeItem(key); } catch (e) { /* as above */ }
+	}
+
+	title.addEventListener("input", keep);
+	body.addEventListener("input", keep);
+	form.addEventListener("submit", function (ev) {
+		var button = ev.submitter;
+		if (!button || button.name === "save") drop();
+	});
 })();
 </script>
 {{end}}

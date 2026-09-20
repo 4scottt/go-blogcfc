@@ -2,5 +2,18 @@ package admin
 
 import "net/http"
 
-// routesEntryExtras is filled by the M4 package for enclosures, the related-entries proxy, preview, the downloads report and stats (A07–A11, A27, A28).
-func (m *Module) routesEntryExtras(mux *http.ServeMux) {}
+// routesEntryExtras registers the screens that hang off the entry
+// editor: the related-entries JSON the picker fetches (A09), the
+// downloads report (A27) and the stats screen (A28). The enclosure
+// upload, the preview and the crash-recovery draft (A07, A10, A11) are
+// the editor's own POST and need no route of their own.
+//
+// All three need a session and nothing more, as the as-is admin did:
+// downloads.cfm, stats.cfm and proxy.cfm sat behind the admin login
+// with no role check.
+func (m *Module) routesEntryExtras(mux *http.ServeMux) {
+	mux.Handle("GET "+adminProxyPath, m.sessions.RequireLogin(http.HandlerFunc(m.entryProxy)))
+	mux.Handle("GET /admin/downloads", m.sessions.RequireLogin(http.HandlerFunc(m.downloadsReport)))
+	mux.Handle("GET /admin/stats", m.sessions.RequireLogin(http.HandlerFunc(m.statsReport)))
+	mux.Handle("GET /admin/stats/{year}", m.sessions.RequireLogin(http.HandlerFunc(m.statsReport)))
+}
