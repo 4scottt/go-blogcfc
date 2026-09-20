@@ -48,6 +48,8 @@ func TestFP_P27_LegacyCfmPathsRedirect301(t *testing.T) {
 		{"/googlesitemap.cfm", "/sitemap.xml"},
 
 		// The admin is one screen now.
+		{"/admin", "/admin/"},
+		{"/admin?reinit=1", "/admin/?reinit=1"},
 		{"/admin/index.cfm", "/admin/"},
 		{"/admin/index.cfm?reinit=1", "/admin/?reinit=1"},
 		{"/admin/entries.cfm", "/admin/"},

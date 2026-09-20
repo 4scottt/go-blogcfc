@@ -36,7 +36,10 @@ func (m *Module) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /googlesitemap.cfm", m.redirectTo("/sitemap.xml"))
 	mux.HandleFunc("GET /page.cfm/{alias}", m.redirectSegment("/page/", "alias"))
 
-	// The admin is one screen now: any old admin page lands on it.
+	// The admin is one screen now: any old admin page lands on it. Without
+	// its slash /admin would fall to the public router's /{alias} and its
+	// reserved-segment 404 (#5); BlogCFC answered it as the admin index.
+	mux.HandleFunc("GET /admin", m.redirectTo("/admin/"))
 	mux.HandleFunc("GET /admin/index.cfm", m.redirectTo("/admin/"))
 	// The rest of the as-is admin pages, by name: a wildcard here would take
 	// every single-segment /admin/ path away from the admin's login gate.
