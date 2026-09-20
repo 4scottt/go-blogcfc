@@ -16,11 +16,7 @@ import (
 
 // pending are ids whose milestone has not landed yet. Each entry is
 // removed when its milestone does; the list must be empty at v0.1.0.
-var pending = map[string]string{
-	"O03": "M6 telemetry",
-	"O04": "M6 telemetry",
-	"O05": "M6 base URL audit",
-}
+var pending = map[string]string{}
 
 var (
 	rowRe  = regexp.MustCompile(`^\| ([A-Z]\d{2}) \|(.*)\|\s*$`)

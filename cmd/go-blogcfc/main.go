@@ -37,6 +37,7 @@ import (
 	"github.com/4scottt/go-blogcfc/internal/pods"
 	"github.com/4scottt/go-blogcfc/internal/release"
 	"github.com/4scottt/go-blogcfc/internal/store"
+	"github.com/4scottt/go-blogcfc/internal/telemetry"
 	"github.com/4scottt/go-blogcfc/internal/web"
 	"github.com/4scottt/go-blogcfc/internal/xmlrpc"
 )
@@ -195,6 +196,22 @@ func serve() error {
 	if err := settings.Reload(ctx); err != nil {
 		return err
 	}
+
+	// Telemetry is optional: with no OTEL_EXPORTER_OTLP_ENDPOINT in the
+	// environment nothing is built and nothing dials out (PLAN §6). The
+	// deferred shutdown runs after the server's, so the last data flushes.
+	shutdownTelemetry, telemetryOn, err := telemetry.Setup(ctx, slog.Default())
+	if err != nil {
+		return fmt.Errorf("telemetry: %w", err)
+	}
+	slog.Info("telemetry", "enabled", telemetryOn)
+	defer func() {
+		flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownTelemetry(flushCtx); err != nil {
+			slog.Debug("telemetry shutdown", "error", err)
+		}
+	}()
 
 	// Sessions are Secure only behind https: the local walk runs on http.
 	sessions := auth.New(cfg.SessionSecret, strings.HasPrefix(cfg.BlogBaseURL, "https://"), st)

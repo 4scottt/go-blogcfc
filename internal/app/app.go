@@ -15,6 +15,7 @@ import (
 	"github.com/4scottt/go-blogcfc/internal/render"
 	"github.com/4scottt/go-blogcfc/internal/static"
 	"github.com/4scottt/go-blogcfc/internal/store"
+	"github.com/4scottt/go-blogcfc/internal/telemetry"
 )
 
 // Module is how a later package adds its handlers to the one mux.
@@ -34,7 +35,14 @@ type App struct {
 }
 
 // New builds the handler: the mux with /health and /static/, every
-// module's routes, wrapped in request logging and panic recovery.
+// module's routes, wrapped in request logging and panic recovery, and all
+// of that inside the OpenTelemetry HTTP handler.
+//
+// The instrumentation goes outermost on purpose: it then times the whole
+// request as the client sees it, and a panic that recoverPanic turns into
+// a 500 is recorded as a 500 rather than escaping the span. It costs
+// nothing when telemetry is off -- the global providers are the API's noop
+// ones until Setup installs real ones (PLAN §6).
 func New(cfg *config.Config, st *store.Store, settings *config.Settings, modules ...Module) http.Handler {
 	a := &App{cfg: cfg, store: st, settings: settings}
 	mux := http.NewServeMux()
@@ -60,7 +68,7 @@ func New(cfg *config.Config, st *store.Store, settings *config.Settings, modules
 	for _, m := range modules {
 		m.Routes(mux)
 	}
-	return recoverPanic(logRequests(mux))
+	return telemetry.Handler(recoverPanic(logRequests(mux)))
 }
 
 // Config, Store and Settings let modules reach the shared dependencies
