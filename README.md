@@ -104,12 +104,14 @@ database.
 ## Development
 
     scripts/dev.sh          # MariaDB in Docker, then serve on :8081
-    scripts/test.sh         # the whole suite against that same database
+    scripts/test.sh         # the whole suite, on its own database beside it
 
 `scripts/dev.sh` serves <http://localhost:8081> with the admin user
 `admin` and the password in `ADMIN_PASSWORD` (`admin` by default).
-`scripts/test.sh` exports a `TEST_DSN` pointing at the compose database;
-set `TEST_DSN` yourself to run `go test ./...` against another server.
+`scripts/test.sh` creates `goblogcfc_test` on the compose server (the
+suite empties every table before each test, so it never shares the dev
+blog's database) and exports a `TEST_DSN` pointing at it; set `TEST_DSN`
+yourself to run `go test ./...` against another server.
 Tests run against a real MariaDB rather than a substitute, so there is one
 SQL dialect and no passes-here-fails-there. Golden files (feed XML,
 sitemap, entry markup, the calendar) are refreshed with

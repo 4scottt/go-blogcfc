@@ -17,7 +17,7 @@ import (
 // skipMessage tells whoever runs the suite how to get a database.
 const skipMessage = "TEST_DSN is not set: start MariaDB with " +
 	"`docker compose -f deploy/compose.yaml up -d db` and run scripts/test.sh " +
-	"(TEST_DSN='goblogcfc:goblogcfc@tcp(127.0.0.1:3307)/goblogcfc?parseTime=true&loc=UTC&multiStatements=true')"
+	"(TEST_DSN='goblogcfc:goblogcfc@tcp(127.0.0.1:3307)/goblogcfc_test?parseTime=true&loc=UTC&multiStatements=true')"
 
 // New returns a store on a clean, migrated, seeded database. It skips the
 // test when TEST_DSN is unset, so `go test ./...` is green without Docker.

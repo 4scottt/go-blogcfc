@@ -15,5 +15,10 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 
-export TEST_DSN="${TEST_DSN:-goblogcfc:goblogcfc@tcp(127.0.0.1:3307)/goblogcfc?parseTime=true&loc=UTC&multiStatements=true}"
+# The suite truncates every table before each test, so it gets a database
+# of its own beside the dev blog's (the same server, the same user).
+$COMPOSE exec -T db mariadb -uroot -pgoblogcfcroot -e \
+  "CREATE DATABASE IF NOT EXISTS goblogcfc_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL ON goblogcfc_test.* TO 'goblogcfc'@'%';" >/dev/null
+
+export TEST_DSN="${TEST_DSN:-goblogcfc:goblogcfc@tcp(127.0.0.1:3307)/goblogcfc_test?parseTime=true&loc=UTC&multiStatements=true}"
 exec go test "$@" ./...
