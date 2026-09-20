@@ -6,5 +6,5 @@ import "embed"
 // FS is the asset tree. Paths are relative to this package, so
 // css/site.css is served as /static/css/site.css.
 //
-//go:embed css
+//go:embed css images
 var FS embed.FS

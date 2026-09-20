@@ -1,0 +1,73 @@
+{{define "content"}}
+<style>
+.note { color: #7b6d55; }
+</style>
+
+<p id="entrycount">
+	{{if .Page.Keywords}}Your filtered search returned{{else}}Your blog currently has{{end}}
+	{{.Page.Total}} {{if eq .Page.Total 1}}entry{{else}}entries{{end}}.
+	{{if .Page.DraftsOnly}}<span class="note">Your account may not release entries, so this list shows your blog's drafts.</span>{{end}}
+</p>
+
+<form id="entryfilter" method="get" action="/admin/entries">
+	<label for="keywords">Keywords</label>
+	<input type="text" id="keywords" name="keywords" value="{{.Page.Keywords}}" maxlength="100">
+	<input type="hidden" name="sort" value="{{.Page.Sort}}">
+	<input type="hidden" name="dir" value="{{.Page.Dir}}">
+	<input type="submit" name="filter" value="Filter by Keyword">
+</form>
+
+<p><a id="addentry" href="/admin/entries/new">Add Entry</a></p>
+
+<form id="entrylist" method="post" action="/admin/entries/delete">
+<table id="entries" class="datatable">
+	<thead>
+		<tr>
+			<th><input type="checkbox" id="markall" name="markall"></th>
+			{{range .Page.Columns}}
+			<th{{if eq .Key "views"}} class="number"{{end}}><a href="{{index $.Page.SortLinks .Key}}">{{.Label}}</a></th>
+			{{end}}
+			<th>Released</th>
+			<th>View</th>
+		</tr>
+	</thead>
+	<tbody>
+	{{range .Page.Rows}}
+		<tr>
+			<td><input type="checkbox" name="mark" value="{{.ID}}"></td>
+			<td><a href="/admin/entries/{{.ID}}">{{.Title}}</a></td>
+			<td>{{.Posted}}</td>
+			<td>{{.Username}}</td>
+			<td class="number">{{.Views}}</td>
+			<td>{{if .Released}}Yes{{else}}No{{end}}</td>
+			<td><a href="{{.ViewURL}}">View</a></td>
+		</tr>
+	{{else}}
+		<tr><td colspan="7">No entries.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+<p><input type="submit" name="delete" value="Delete Marked"></p>
+</form>
+
+{{if gt .Page.Pages 1}}
+<p id="paging">
+	{{if .Page.PrevLink}}<a id="prevpage" href="{{.Page.PrevLink}}">Previous</a>{{end}}
+	Page {{.Page.Page}} of {{.Page.Pages}}
+	{{if .Page.NextLink}}<a id="nextpage" href="{{.Page.NextLink}}">Next</a>{{end}}
+</p>
+{{end}}
+
+<script>
+// Select-all for the bulk form: plain JS, as the datatable style asks
+// (PLAN §12 "Admin").
+(function () {
+	var all = document.getElementById("markall");
+	if (!all) return;
+	all.addEventListener("change", function () {
+		var boxes = document.querySelectorAll("#entrylist input[name=mark]");
+		for (var i = 0; i < boxes.length; i++) boxes[i].checked = all.checked;
+	});
+})();
+</script>
+{{end}}

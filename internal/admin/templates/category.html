@@ -1,0 +1,43 @@
+{{define "content"}}
+<style>
+/* The notice, button-link and hint styles these screens share. They live
+   in the templates that use them because admin.css belongs to the frame;
+   a later package may lift them into it. */
+.errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.errors ul { margin: 6px 0 0; }
+a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; border-radius: 3px; background: #ece7d6; color: #241c14; }
+.note { color: #7b6d55; }
+</style>
+
+{{if .Page.Errors}}
+<div class="errors">
+	<p>Please correct the following:</p>
+	<ul>{{range .Page.Errors}}<li>{{.}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+<p class="note">
+	The alias is the category's part of a search-engine-safe URL. Leave it blank and
+	one is made from the name; write your own with letters, numbers and hyphens only.
+</p>
+
+<form id="categoryForm" method="post" action="{{.Page.Action}}">
+	<table id="categorytable">
+		<tr>
+			<td><label for="name">Name</label></td>
+			<td><input type="text" id="name" name="name" value="{{.Page.Name}}" maxlength="50" size="40"></td>
+		</tr>
+		<tr>
+			<td><label for="alias">Alias</label></td>
+			<td><input type="text" id="alias" name="alias" value="{{.Page.Alias}}" maxlength="50" size="40"></td>
+		</tr>
+		<tr>
+			<td></td>
+			<td>
+				<a class="button" id="cancel" href="/admin/categories">Cancel</a>
+				<input type="submit" name="save" value="Save">
+			</td>
+		</tr>
+	</table>
+</form>
+{{end}}

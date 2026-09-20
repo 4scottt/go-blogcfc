@@ -26,8 +26,12 @@ type harness struct {
 	t      *testing.T
 	module *admin.Module
 	store  *store.Store
-	server *httptest.Server
-	client *http.Client
+	// settings is the same accessor the module holds, so a test changes a
+	// setting (the admin page size, the blog's zone) and the handlers see
+	// it at once.
+	settings *config.Settings
+	server   *httptest.Server
+	client   *http.Client
 }
 
 func newHarness(t *testing.T) *harness {
@@ -55,7 +59,7 @@ func newHarness(t *testing.T) *harness {
 		Jar:           jar,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
-	return &harness{t: t, module: m, store: st, server: srv, client: client}
+	return &harness{t: t, module: m, store: st, settings: settings, server: srv, client: client}
 }
 
 // user creates a user with the named seeded roles.

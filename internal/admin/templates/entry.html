@@ -1,0 +1,159 @@
+{{define "content"}}
+<style>
+/* Tabs are plain CSS and JS, no library (PLAN §12 "Admin"). Without
+   JavaScript every panel stays visible, so the editor still works. */
+#entrytabs ul.tabs { list-style: none; margin: 0; padding: 0; border-bottom: 1px solid #d8d2c0; }
+#entrytabs ul.tabs li { display: inline-block; }
+#entrytabs ul.tabs a { display: block; padding: 6px 14px; border: 1px solid transparent; border-bottom: 0; }
+#entrytabs ul.tabs a.active { background: #fff; border-color: #d8d2c0; }
+#entrytabs .tab { padding: 14px 0; }
+#entrytabs.js-tabs .tab { display: none; }
+#entrytabs.js-tabs .tab.active { display: block; }
+#entrytabs .ctrl { margin: 0 0 12px; }
+#entrytabs .ctrl label { display: block; font-weight: bold; }
+#entrytabs textarea { width: 100%; min-height: 320px; }
+a.button { display: inline-block; padding: 5px 14px; border: 1px solid #b9b19a; border-radius: 3px; background: #ece7d6; color: #241c14; }
+.errors { margin: 0 0 16px; padding: 10px 14px; border: 1px solid #a3212b; border-left-width: 5px; background: #fbe7e8; }
+.errors ul { margin: 6px 0 0; }
+.note { color: #7b6d55; }
+</style>
+
+{{if .Page.Errors}}
+<div class="errors">
+	<p>Please correct the following:</p>
+	<ul>{{range .Page.Errors}}<li>{{.}}</li>{{end}}</ul>
+</div>
+{{end}}
+
+<p class="note">
+	Separate the part the lists show from the rest with the &lt;more/&gt; tag.
+	{{if .Page.ViewURL}}<a id="viewentry" href="{{.Page.ViewURL}}">View</a>{{end}}
+</p>
+
+<form id="editForm" method="post" action="{{.Page.Action}}">
+<div id="entrytabs">
+	<ul class="tabs">
+		<li><a class="tablink active" href="#main">Main</a></li>
+		<li><a class="tablink" href="#additional">Additional Settings</a></li>
+		<li><a class="tablink" href="#related">Related Entries</a></li>
+		<li><a class="tablink" href="#comments">Comments</a></li>
+	</ul>
+
+	<div class="tab active" id="main">
+		<div class="ctrl">
+			<label for="title">Title</label>
+			<input type="text" id="title" name="title" value="{{.Page.Title}}" maxlength="100" size="60">
+		</div>
+		<div class="ctrl">
+			<label for="body">Body</label>
+			<textarea id="body" name="body">{{.Page.Body}}</textarea>
+		</div>
+		<div class="ctrl">
+			<label for="categories">Categories</label>
+			<select id="categories" name="categories" multiple size="4">
+			{{range .Page.Categories}}
+				<option value="{{.ID}}"{{if index $.Page.Selected .ID}} selected{{end}}>{{.Name}}</option>
+			{{end}}
+			</select>
+		</div>
+		{{if .Page.CanAddCategory}}
+		<div class="ctrl">
+			<label for="newcategory">Add a New Category</label>
+			<input type="text" id="newcategory" name="newcategory" value="{{.Page.NewCategory}}" maxlength="50">
+		</div>
+		{{end}}
+		<div class="ctrl">
+			<p id="enclosure-note" class="note">Enclosure: {{.Page.LaterMilestone}}.</p>
+		</div>
+	</div>
+
+	<div class="tab" id="additional">
+		<div class="ctrl">
+			<label for="posted">Posted</label>
+			<input type="text" id="posted" name="posted" value="{{.Page.Posted}}" maxlength="19" placeholder="YYYY-MM-DD HH:MM">
+			<span class="note">In the blog's time zone ({{.Settings.Timezone}}).</span>
+		</div>
+		<div class="ctrl">
+			<label for="alias">Alias</label>
+			<input type="text" id="alias" name="alias" value="{{.Page.Alias}}" maxlength="100">
+			<span class="note">Left blank, it is made from the title.</span>
+		</div>
+		<div class="ctrl">
+			<label for="allowcomments">Allow Comments</label>
+			<input type="checkbox" id="allowcomments" name="allowcomments" value="1"{{if .Page.AllowComments}} checked{{end}}>
+		</div>
+		<div class="ctrl">
+			<label for="sendemail">Email Blog Entry</label>
+			<input type="checkbox" id="sendemail" name="sendemail" value="1"{{if .Page.SendEmail}} checked{{end}}>
+		</div>
+		<div class="ctrl">
+			<label for="released">Released</label>
+			{{if .Page.CanRelease}}
+			<input type="checkbox" id="released" name="released" value="1"{{if .Page.Released}} checked{{end}}>
+			{{else}}
+			<input type="checkbox" id="released" value="1" disabled{{if .Page.Released}} checked{{end}}>
+			<span class="note">Your account may not release entries.</span>
+			{{end}}
+		</div>
+		<div class="ctrl">
+			<label for="subtitle">iTunes Subtitle</label>
+			<input type="text" id="subtitle" name="subtitle" value="{{.Page.Subtitle}}" maxlength="100" size="60">
+		</div>
+		<div class="ctrl">
+			<label for="keywords">iTunes Keywords</label>
+			<input type="text" id="keywords" name="keywords" value="{{.Page.Keywords}}" maxlength="100" size="60">
+		</div>
+		<div class="ctrl">
+			<label for="summary">iTunes Summary</label>
+			<input type="text" id="summary" name="summary" value="{{.Page.Summary}}" maxlength="255" size="60">
+		</div>
+		<div class="ctrl">
+			<label for="duration">Duration</label>
+			<input type="text" id="duration" name="duration" value="{{.Page.Duration}}" maxlength="10">
+		</div>
+	</div>
+
+	<div class="tab" id="related">
+		<h2>Related Entries</h2>
+		<p class="note">{{.Page.LaterMilestone}}.</p>
+	</div>
+
+	<div class="tab" id="comments">
+		<h2>Comments</h2>
+		<p class="note">{{.Page.LaterMilestone}}.</p>
+	</div>
+</div>
+
+<p>
+	<a class="button" id="cancel" href="/admin/entries">Cancel</a>
+	<input type="submit" name="save" value="Save">
+</p>
+</form>
+
+<script>
+// One panel at a time once JavaScript is there; the markup stays plain so
+// the Pilot finds every control by name whichever tab is showing.
+(function () {
+	var wrap = document.getElementById("entrytabs");
+	if (!wrap) return;
+	var links = wrap.querySelectorAll("a.tablink");
+	var panels = wrap.querySelectorAll("div.tab");
+	wrap.className = "js-tabs";
+	function show(id) {
+		for (var i = 0; i < panels.length; i++) {
+			panels[i].className = panels[i].id === id ? "tab active" : "tab";
+		}
+		for (var j = 0; j < links.length; j++) {
+			links[j].className = links[j].getAttribute("href") === "#" + id ? "tablink active" : "tablink";
+		}
+	}
+	for (var k = 0; k < links.length; k++) {
+		links[k].addEventListener("click", function (ev) {
+			ev.preventDefault();
+			show(this.getAttribute("href").slice(1));
+		});
+	}
+	show("main");
+})();
+</script>
+{{end}}

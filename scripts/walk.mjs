@@ -53,7 +53,7 @@ try {
   const own = new URL(url).host;
   page.on("requestfailed", (r) => { if (new URL(r.url()).host === own) problems.push(`${r.failure()?.errorText || "failed"}: ${r.url()}`); });
   page.on("response", (r) => { if (r.status() >= 400 && r.request().resourceType() !== "document" && new URL(r.url()).host === own) problems.push(`${r.status()}: ${r.url()}`); });
-  page.on("console", (m) => { if (m.type() === "error") problems.push(`console: ${m.text().slice(0, 200)}`); });
+  page.on("console", (m) => { if (m.type() === "error") problems.push(`console: ${m.text().slice(0, 200)} (${m.location()?.url || "no url"})`); });
   page.on("pageerror", (e) => problems.push(`page: ${String(e).slice(0, 200)}`));
   page.setDefaultTimeout(30_000);
 

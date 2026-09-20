@@ -1,0 +1,29 @@
+{{define "content"}}
+<p id="categorycount">
+	Your blog currently has {{len .Page.Rows}} {{if eq (len .Page.Rows) 1}}category{{else}}categories{{end}}.
+</p>
+
+<p><a id="addcategory" href="/admin/categories/new">Add Category</a></p>
+
+<table id="categories" class="datatable">
+	<thead>
+		<tr><th>Category</th><th>Alias</th><th class="number">Entries</th><th>Delete</th></tr>
+	</thead>
+	<tbody>
+	{{range .Page.Rows}}
+		<tr>
+			<td><a href="/admin/categories/{{.ID}}">{{.Name}}</a></td>
+			<td>{{.Alias}}</td>
+			<td class="number">{{.EntryCount}}</td>
+			<td>
+				<form method="post" action="/admin/categories/{{.ID}}/delete">
+					<input type="submit" name="delete" value="Delete">
+				</form>
+			</td>
+		</tr>
+	{{else}}
+		<tr><td colspan="4">No categories.</td></tr>
+	{{end}}
+	</tbody>
+</table>
+{{end}}

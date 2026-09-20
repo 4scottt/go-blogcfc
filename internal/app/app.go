@@ -5,8 +5,10 @@ package app
 
 import (
 	"context"
+	"io/fs"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/4scottt/go-blogcfc/internal/config"
@@ -39,7 +41,12 @@ func New(cfg *config.Config, st *store.Store, settings *config.Settings, modules
 
 	// static.FS is rooted at the asset tree, so css/site.css answers
 	// /static/css/site.css.
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static.FS)))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", noDirListing(http.FileServerFS(static.FS))))
+	// Browsers ask for /favicon.ico unprompted; an own-origin 404 fails the
+	// acceptance walk, so the icon answers at the root as well.
+	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFileFS(w, r, static.FS, "images/favicon.ico")
+	})
 
 	for _, m := range modules {
 		m.Routes(mux)
@@ -69,4 +76,20 @@ func (a *App) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))
+}
+
+// noDirListing keeps the static server to files: a directory path (or one
+// with a trailing slash) is a 404, never an index listing.
+func noDirListing(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "" || strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		if info, err := fs.Stat(static.FS, r.URL.Path); err != nil || info.IsDir() {
+			http.NotFound(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
