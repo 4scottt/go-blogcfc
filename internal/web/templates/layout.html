@@ -7,9 +7,10 @@
 <meta name="title" content="{{.BlogTitle}}{{with .AdditionalTitle}} - {{.}}{{end}}" />
 <meta name="description" content="{{.Description}}" />
 <meta name="keywords" content="{{.Keywords}}" />
-<link rel="alternate" type="application/rss+xml" title="RSS" href="{{.RSSURL}}" />
+<link rel="alternate" type="application/rss+xml" title="{{.BlogTitle}}" href="{{.RSSURL}}" />
 <link rel="icon" href="/static/images/favicon.ico">
-<link rel="stylesheet" type="text/css" href="{{.CSSURL}}" />
+<link rel="stylesheet" type="text/css" href="{{.CSSURL}}" />{{/* the render package links its own token colours here, beside this one: /static/css/code.css */}}
+<script>if (top != self) { top.location = self.location; }</script>
 </head>
 <body>
  <div id="page" class="with-sidebar">
@@ -48,7 +49,7 @@
        </div>
       </div>
       <div class="col2">
-       <ul id="sidebar"></ul>
+       <ul id="sidebar">{{.Sidebar}}</ul>
       </div>
       <div class="clear-content"></div>
      </div>

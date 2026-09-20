@@ -39,6 +39,11 @@ var pageTemplates = []string{"entries.html", "notfound.html"}
 
 // Module holds the public site's dependencies and its parsed templates.
 type Module struct {
+	// Sidebar renders the pods column for one request. main.go sets it
+	// from the pods package; while it is nil the layout leaves ul#sidebar
+	// empty, which is what M1 and the tests want (PLAN §9 D01-D10).
+	Sidebar func(r *http.Request) template.HTML
+
 	cfg      *config.Config
 	store    *store.Store
 	settings *config.Settings
@@ -80,6 +85,8 @@ func (m *Module) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /postedby/{username}", m.handlePostedBy)
 	mux.HandleFunc("GET /{alias}", m.handleCategoryByAlias)
 	mux.HandleFunc("GET /", m.handleSES)
+	m.routesEntry(mux)
+	m.routesExtra(mux)
 }
 
 // reservedSegments are the first path segments later milestones own; a

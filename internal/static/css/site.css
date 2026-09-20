@@ -1,89 +1,470 @@
 /*
- * go-blogcfc public site, first plain stylesheet.
+ * go-blogcfc public site.
  *
- * This is readability only: enough structure for the §12 skeleton to be
- * legible and to hold two columns at 70/30. The Arclite look-alike
- * (fresh CSS, never the GPL original) arrives with M2.
+ * A fresh recreation of the structure the as-is blog's theme (Arclite,
+ * GPL) gives BlogCFC: the same ids and classes (PLAN §12), the same
+ * proportions, colours and font stacks, none of its CSS, sprites,
+ * images or fonts. Where the original leaned on background images -- the
+ * date badge, the box shadows, the nav tabs -- this uses borders,
+ * gradients and box-shadow instead. No web fonts: every family is a
+ * system stack.
+ *
+ * Order: page frame, header, nav, content, one entry, comments, blog
+ * furniture (headers, code, calendar, tag cloud), sidebar, footer,
+ * popups, phone width, print.
  */
 
+/* Page frame ----------------------------------------------------------- */
+
 * { box-sizing: border-box; }
+
+html, body { height: 100%; }
 
 body {
   margin: 0;
   background: #261c13;
   color: #221a12;
-  font: 13px/1.6 "Lucida Grande", "Lucida Sans Unicode", Calibri, Arial, sans-serif;
+  font: 13px/1.55 "Lucida Grande", "Lucida Sans Unicode", Calibri, Arial, sans-serif;
 }
 
 a { color: #0071bb; text-decoration: none; }
 a:hover { color: #f44365; text-decoration: underline; }
 
-#page { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+img { border: 0; }
 
-/* Header band ---------------------------------------------------------- */
-
-#header-wrap { background: #261c13; }
-#header { padding: 24px 0 0; }
-
-#pagetitle { position: relative; padding-bottom: 16px; }
-h1.logo { margin: 0; font-family: "Arial Black", Arial, sans-serif; font-size: 30px; }
-h1.logo a, h1.logo a:hover { color: #fff; text-decoration: none; }
-
-.search-block { margin-top: 12px; }
-#searchform fieldset { border: 0; margin: 0; padding: 0; }
-#searchbox {
-  width: 200px; padding: 4px 6px; border: 1px solid #8c7a63;
-  background: #fffdf5; font-size: 13px;
+h1, h2, h3 {
+  font-family: "Arial Black", "Arial Bold", Arial, Helvetica, sans-serif;
+  font-weight: normal;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin: .5em 0 .2em;
 }
-input.go { padding: 4px 10px; border: 1px solid #8c7a63; background: #eeead9; cursor: pointer; }
+h1 { font-size: 30px; }
+h2 { font-size: 24px; }
+h3 { font-size: 20px; }
 
-#nav-wrap1 { margin-top: 12px; }
-ul#nav { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; }
+h4, h5, h6 {
+  font-family: Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  margin: .5em 0 .2em;
+}
+h4 { font-size: 17px; font-weight: normal; }
+h5 { font-size: 15px; }
+h6 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+
+#page { width: 100%; margin: 0 auto; position: relative; }
+
+.block-content {
+  width: 100%;
+  min-width: 780px;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: block;
+  padding: 0 16px;
+}
+
+.clear { clear: both; }
+.clear-content { height: 1px; clear: both; display: block; }
+.clearfix::after { content: ""; display: table; clear: both; }
+
+/* Header --------------------------------------------------------------- */
+
+#header-wrap { width: 100%; background: #261c13; }
+
+#header {
+  height: 190px;
+  position: relative;
+  z-index: 10;
+  color: #fff;
+}
+
+#pagetitle { padding: 46px 0 0 8px; }
+
+h1.logo {
+  float: left;
+  margin: 0;
+  padding: 0;
+  font-family: "Arial Black", "Arial Bold", Arial, Helvetica, sans-serif;
+  font-size: 54px;
+  font-weight: normal;
+  font-variant: small-caps;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: #fff;
+}
+h1.logo a { color: #eeeadb; text-decoration: none; }
+h1.logo a:hover { color: #fff; text-decoration: none; }
+
+/* Search box, bottom right of the dark header. */
+.search-block { position: absolute; right: 24px; bottom: 26px; }
+.search-block .searchform-wrap {
+  background: #1b130c;
+  border: 1px solid #5d4a37;
+  border-radius: 15px;
+  height: 30px;
+  padding: 0 0 0 10px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.search-block fieldset { border: 0; padding: 0; margin: 0; flex: 1 1 auto; display: flex; align-items: center; }
+.search-block input {
+  background: none;
+  border: 0;
+  color: #d8d0bd;
+  font: inherit;
+  padding: 0;
+  margin: 0;
+}
+.search-block input.searchfield { width: 110px; }
+.search-block input.searchfield:focus { outline: none; color: #fff; }
+.search-block input.go {
+  width: 44px;
+  height: 30px;
+  margin-left: auto;
+  background: #4a382a;
+  color: #fff;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+}
+.search-block input.go:hover { background: #6b503a; }
+
+/* Navigation: a 64px tab bar sitting on the seam between the dark header
+   and the cream band, as the as-is theme's sprite bar does. */
+#nav-wrap1 {
+  position: absolute;
+  z-index: 3;
+  top: 150px;
+  left: 24px;
+  right: 24px;
+  height: 64px;
+}
+#nav-wrap2 { height: 64px; float: left; }
+
+ul#nav, ul#nav li { padding: 0; margin: 0; list-style-type: none; }
+
+ul#nav { display: block; height: 64px; }
+
+ul#nav li { display: inline; float: left; position: relative; }
+
 ul#nav li a {
-  display: block; padding: 8px 16px; color: #e7e0c7;
-  background: #3a2c1e; border-radius: 3px 3px 0 0;
+  display: block;
+  float: left;
+  height: 44px;
+  margin-top: 20px;
+  padding: 0 22px;
+  line-height: 44px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #b5d1e6;
+  text-decoration: none;
+  text-shadow: rgba(0, 0, 0, .35) 1px 1px 1px;
+  background: linear-gradient(#4a382a, #33251a);
+  border: 1px solid #5d4a37;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
 }
-ul#nav li a:hover { background: #eeead9; color: #221a12; text-decoration: none; }
+ul#nav li + li a { margin-left: 3px; }
+ul#nav li a:hover { color: #fff; text-decoration: none; background: linear-gradient(#5d4634, #3d2c1f); }
 
 /* Content band --------------------------------------------------------- */
 
-#main { background: #eeead9; padding: 20px; display: flex; flex-wrap: wrap; gap: 24px; }
-.col1 { flex: 1 1 65%; min-width: 0; }
-.col2 { flex: 1 1 25%; min-width: 0; }
-.clear, .clear-content { clear: both; }
+#main-wrap1 { background: #eeead9; }
+#main-wrap2 { border-top: 1px solid #fff; }
+
+#main { padding-top: 44px; display: flex; flex-wrap: wrap; }
+
+.col1 { width: 70%; position: relative; }
+.col2 { width: 30%; position: relative; }
+
+#main-content { padding: 2em 1em; }
+#main-content > h3 { margin-top: 0; }
 
 /* One entry ------------------------------------------------------------ */
 
-div.post { margin: 0 0 32px; }
-.post-header { border-bottom: 1px solid #d6cfb4; padding-bottom: 6px; margin-bottom: 10px; }
-h3.post-title { margin: 0 0 4px; font-family: Palatino, Georgia, serif; font-size: 22px; }
-p.post-date { margin: 0; font-size: 11px; text-transform: uppercase; color: #6d6047; }
-p.post-date .month { font-weight: bold; }
-p.post-author { margin: 2px 0 0; font-size: 11px; color: #6d6047; }
-.post-content { font-size: 14px; }
-.post-content img { max-width: 100%; height: auto; }
-p.more { text-align: right; }
-p.post-metadata { margin-top: 16px; font-size: 11px; color: #6d6047; }
-p.pager { text-align: right; font-size: 12px; }
+div.post, div.page { margin: 1em 0 2.5em; }
+
+.post-header { margin-bottom: .6em; }
+
+h3.post-title, h2.post-title {
+  margin: 0;
+  padding: .6em 0 .3em;
+  font-family: "Arial Black", "Arial Bold", Arial, Helvetica, sans-serif;
+  font-size: 23px;
+  font-weight: bold;
+  letter-spacing: -0.04em;
+  text-shadow: #fff 1px 1px 1px;
+}
+h2.post-title { font-size: 32px; font-weight: normal; }
+h3.post-title a, h2.post-title a { color: #201811; text-decoration: none; }
+h3.post-title a:hover, h2.post-title a:hover { color: #df2e56; text-decoration: none; }
+
+/* The month/day badge: a red month strip over a cream day square. */
+.post p.post-date {
+  float: left;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  text-align: center;
+  line-height: 1;
+  background: #fff;
+  border: 1px solid #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+}
+.post .post-date span.month {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 3px 0;
+  background: #f44365;
+  border-bottom: 1px solid #fff;
+  color: #fff;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.post .post-date span.day {
+  position: absolute;
+  bottom: 1px;
+  left: 0;
+  width: 100%;
+  padding: 4px 0;
+  font-size: 15px;
+}
+
+.post p.post-author {
+  margin: 0 0 0 45px;
+  padding: 0 12px;
+  min-height: 40px;
+  border: 1px solid #f2efe5;
+  background: #f4f1e9;
+  color: #75695e;
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.25;
+}
+.post .post-author span.info { display: block; padding: 8px 0; }
+.post .post-author a { color: #6b5e50; text-decoration: underline; }
+.post .post-author a:hover { color: #0071bb; }
+
+.post .post-content {
+  clear: left;
+  padding-bottom: .4em;
+  font-size: 14px;
+  overflow-wrap: break-word;
+}
+.post .post-content img { max-width: 100%; height: auto; }
+.post .post-content p { margin: 1em 0; }
+
+p.more { text-align: right; margin: 1em 0 0; }
+
+p.post-metadata {
+  margin: 2em 0;
+  padding: .6em 1em;
+  font-size: 11px;
+  color: #a8937b;
+  background: #f4f1e9;
+  border: 1px solid #fff;
+}
+p.post-metadata a { color: #6b5e50; text-decoration: underline; line-height: 1.5; }
+p.post-metadata a:hover { color: #0071bb; }
+
+p.tags { font-size: 11px; color: #a8937b; margin: 1em 0; }
+p.tags a { color: #6b5e50; text-decoration: underline; }
+
+p.pager { text-align: right; font-size: 12px; margin: 2em 0 0; }
+
+/* Comments ------------------------------------------------------------- */
+
+h3.comments { font-family: inherit; font-size: 19px; margin: 2em 0 0; }
+
+ul#comments { margin: .6em 0 1em; padding: 0; list-style-type: none; }
+ul#comments ul { margin-left: 2em; padding: 0; list-style-type: none; }
+
+ul#comments li.comment, ul#comments li.trackback {
+  margin: 10px 0;
+  padding: 10px;
+  position: relative;
+  background: #fff;
+  border: 1px solid #ded7bd;
+  box-shadow: 0 2px 4px rgba(38, 28, 19, .12);
+}
+ul#comments li.commentAlt, ul#comments li.trackbackAlt { background: #f4f1e9; }
+ul#comments li.comment li.comment { width: 100%; }
+
+/* Avatar on the left, the comment's text beside it. */
+li.comment img.avatar, li.comment > img {
+  float: left;
+  margin: 0 10px 8px 0;
+  max-width: 48px;
+  max-height: 48px;
+}
+li.comment .commentByLine, li.comment .commentbyline {
+  font-weight: bold;
+  font-style: italic;
+  font-size: 12px;
+  color: #75695e;
+}
+li.comment .commentBody { font-size: 13px; margin: .5em 0; overflow-wrap: break-word; }
+li.admincomment { border-color: #125f9f; }
+
+.addCommentLink, .addTrackbackLink { text-align: right; }
+
+/* Blog furniture ------------------------------------------------------- */
+
+.blogHeader, .commentHeader, .relatedentriesHeader, .trackbackHeader, .footerHeader {
+  font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: normal;
+  font-variant: small-caps;
+  letter-spacing: .06em;
+  color: #666;
+  background: #f4f1e9;
+  border: 1px solid #999;
+  padding: 5px;
+  margin-bottom: 10px;
+}
+.footerHeader { background: #ddd; }
+
+.date { font-family: "Trebuchet MS", Verdana, Arial, sans-serif; color: #666; border: 1px solid #999; padding: 5px; margin-bottom: 10px; }
+
+/* Code blocks. The render package ships its own token colours in
+   /static/css/code.css, linked from the layout beside this file; the
+   rules here are only the block itself. */
+div.code, .code {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 13px;
+  color: #000;
+  background: #ffffcc;
+  border: 1px solid #0000cc;
+  padding: 4px;
+  margin: 5px 0;
+  line-height: 15px;
+  max-height: 200px;
+  overflow: auto;
+}
+.codePrint { max-height: none; overflow: visible; font-size: 11px; }
+
+/* Calendar and search highlighting. */
+#calendar { width: 90%; margin: 0 auto; }
+.calendarTable, .calendarTable a { font-family: Verdana, Arial, sans-serif; font-size: 12px; text-align: center; padding: 2px; line-height: 14px; }
+#calendar th { font-weight: normal; }
+.calendarToday { background-color: yellow; }
+.highlight { background-color: yellow; }
+
+/* Tag cloud: the five as-is size classes. */
+.smallestTag { font-size: 9px; }
+.smallTag { font-size: 11px; }
+.mediumTag { font-size: 13px; }
+.largeTag { font-size: 16px; }
+.largestTag { font-size: 20px; }
 
 /* Sidebar -------------------------------------------------------------- */
 
-ul#sidebar { list-style: none; margin: 0; padding: 0; }
-ul#sidebar li.block { margin-bottom: 20px; }
-ul#sidebar .box { background: #fffdf5; border: 1px solid #ded7bd; padding: 10px; }
-ul#sidebar .titlewrap h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; }
+ul#sidebar { padding: 2em 1em; margin: 0; list-style-type: none; }
+
+ul#sidebar li.block { list-style-type: none; margin: 0 0 1.5em; padding: 0; }
+
+ul#sidebar .box {
+  background: #fff;
+  border: 1px solid #ded7bd;
+  padding: 0 0 8px;
+  margin: 0 0 1em;
+  box-shadow: 3px 3px 6px rgba(38, 28, 19, .22);
+}
+
+ul#sidebar .box .titlewrap {
+  background: linear-gradient(#8a7660, #6d5b47);
+  padding: 6px 12px;
+}
+ul#sidebar .box .titlewrap h4 {
+  display: block;
+  margin: 0;
+  padding: 0;
+  font-family: "Lucida Grande", "Lucida Sans Unicode", Arial, sans-serif;
+  font-size: 15px;
+  font-weight: normal;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: #fff;
+}
+ul#sidebar .box .titlewrap h4 a { color: #fff; text-decoration: none; }
+ul#sidebar .box .titlewrap h4 a:hover { color: #ffc000; }
+
+ul#sidebar .box .the-content { padding: .6em 1em; font-size: 12px; }
+ul#sidebar .box .the-content ul { margin: .2em 0; padding: 0; list-style-type: none; }
+ul#sidebar .box .the-content li { margin: 0; padding: 2px 0; border-bottom: 1px solid #f0ecdd; }
+ul#sidebar .box .the-content li:last-child { border-bottom: 0; }
 
 /* Footer --------------------------------------------------------------- */
 
-#footer { padding: 16px 0 32px; }
-#footer .copyright { color: #e7e0c7; font-size: 11px; }
-#footer a { color: #e7e0c7; text-decoration: underline; }
+#footer {
+  padding: 1.2em 0 2.4em;
+  color: #e7e0c7;
+  border-top: 1px solid #fff;
+}
+#footer a { color: #a59079; }
+#footer a:hover { color: #f44365; }
+#footer .copyright { text-align: center; font-size: 11px; }
 
-/* Phone width: one column, no horizontal scroll ------------------------ */
+/* Popup forms ---------------------------------------------------------- */
 
-@media (max-width: 640px) {
-  #main { display: block; }
-  .col2 { margin-top: 24px; }
-  ul#nav { flex-wrap: wrap; }
-  #searchbox { width: 100%; }
+body#popUpFormBody {
+  background: #fff;
+  color: #221a12;
+  margin: 8px;
+}
+body#popUpFormBody h3 { font-size: 17px; margin: 0 0 .6em; }
+body#popUpFormBody fieldset { border: 1px solid #d2c7af; padding: .8em; margin: 8px 0; text-align: left; }
+body#popUpFormBody legend { font-size: 14px; font-weight: normal; padding: 3px 5px 10px; }
+body#popUpFormBody label { float: left; width: 110px; }
+body#popUpFormBody .longLabel { width: 260px; }
+body#popUpFormBody .nofLoat { float: none; }
+body#popUpFormBody form div { clear: both; margin-bottom: 5px; }
+body#popUpFormBody textarea { width: 100%; height: 120px; overflow: auto; }
+
+/* Phone width ---------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .block-content { min-width: 0; max-width: none; padding: 0 12px; }
+  #header, #header .block-content { height: auto; }
+  #pagetitle { padding: 20px 0 12px; }
+  h1.logo { float: none; font-size: 34px; }
+  .search-block { position: static; margin-top: 12px; }
+  /* A fieldset does not grow as a flex item in every engine, so at phone
+     width the wrap is a plain block and the fieldset fills it. */
+  .search-block .searchform-wrap { display: block; width: 100%; }
+  .search-block fieldset { width: 100%; height: 28px; }
+  .search-block input.searchfield { flex: 1 1 auto; width: auto; min-width: 0; }
+  #nav-wrap1 { position: static; height: auto; left: auto; right: auto; padding-bottom: 12px; }
+  #nav-wrap2 { float: none; height: auto; }
+  ul#nav { height: auto; display: flex; flex-wrap: wrap; gap: 3px; }
+  ul#nav li { display: block; float: none; }
+  ul#nav li a { float: none; height: 36px; line-height: 36px; margin: 0; padding: 0 14px; border-radius: 4px 4px 0 0; }
+  ul#nav li + li a { margin-left: 0; }
+  #main { display: block; padding-top: 0; }
+  .col1, .col2 { width: 100%; }
+  #main-content { padding: 1.2em .6em; }
+  ul#sidebar { padding: 0 .6em 1.6em; }
+  h3.post-title { font-size: 20px; }
+  .post .post-content { font-size: 13px; }
+  ul#comments li.comment, ul#comments li.trackback { width: auto; }
+  table { display: block; overflow-x: auto; }
+}
+
+/* Print: the entry only (PLAN §8 /print/{id}) --------------------------- */
+
+@media print {
+  body { background: #fff; color: #000; font-size: 12px; }
+  #header, #nav-wrap1, .col2, #footer, .search-block, p.pager, .addCommentLink { display: none; }
+  #main-wrap1, #main-wrap2 { background: #fff; border: 0; }
+  #main { display: block; padding-top: 0; }
+  .col1 { width: 100%; }
+  .block-content { min-width: 0; max-width: none; padding: 0; }
+  #main-content { padding: 0; }
+  a { color: #000; text-decoration: underline; }
+  div.code, .code { max-height: none; overflow: visible; }
+  p.post-metadata { border: 0; background: none; }
 }

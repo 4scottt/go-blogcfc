@@ -98,6 +98,18 @@ try {
   await expectText(page, title, "the blog home");
   note("entry on the blog");
 
+  // 5b. phone width: the page must fit (PLAN §9 P28)
+  const desktop = page.viewportSize();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  const fits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+  if (!fits) {
+    const w = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+    throw new Error(`responsive: the home page scrolls sideways at 390px (scrollWidth ${w[0]} > innerWidth ${w[1]})`);
+  }
+  note("responsive: no horizontal scroll at phone width");
+  if (desktop) await page.setViewportSize(desktop);
+
   if (steps >= 6) {
     const rss = await ctx.request.get(`${url}/rss?mode=full`);
     const feed = await rss.text();

@@ -132,6 +132,11 @@ var (
 	postBlock  = regexp.MustCompile(`(?s)<div class="post">.*?\n</div>`)
 	pagerBlock = regexp.MustCompile(`(?s)<p class="pager">.*?</p>`)
 	titleLinks = regexp.MustCompile(`<h3 class="post-title"><a href="[^"]*">([^<]*)</a></h3>`)
+	// The entry header and its footer metadata line, and the whole head:
+	// the three fragments the look package holds as goldens (P10, P11, P26).
+	headerBlock   = regexp.MustCompile(`(?s)<div class="post-header">.*?</div>`)
+	metadataBlock = regexp.MustCompile(`(?s)<p class="post-metadata">.*?</p>`)
+	headBlock     = regexp.MustCompile(`(?s)<head>.*?</head>`)
 )
 
 // postTitles returns the entry titles a page lists, in order.
@@ -199,7 +204,7 @@ func TestLayoutSkeletonMatchesGolden(t *testing.T) {
 		`<div id="footer">`,
 		`<div class="copyright">`,
 		`go-blogcfc ` + Version + `, a rewrite of BlogCFC by Raymond Camden |`,
-		`<link rel="alternate" type="application/rss+xml" title="RSS" href="` + testBase + `/rss" />`,
+		`<link rel="alternate" type="application/rss+xml" title="BlogCFC" href="` + testBase + `/rss" />`,
 		`<a href="` + testBase + `/contact">`,
 	} {
 		if !strings.Contains(body, want) {
@@ -215,4 +220,122 @@ func TestLayoutSkeletonMatchesGolden(t *testing.T) {
 		t.Error("a link was built from the request Host, not BLOG_BASE_URL")
 	}
 	checkGolden(t, "layout_home_empty.html", body)
+}
+
+// TestFP_P10_EntryHeaderMarkup is P10: the entry header is the as-is
+// block -- a linked title, the month/day badge, the author and the
+// category links, and a comment count anchored at the permalink's
+// #comments (PLAN §12, §9 P10).
+func TestFP_P10_EntryHeaderMarkup(t *testing.T) {
+	s := newTestSite(t, nil)
+	s.user("ray", "Raymond Camden")
+	cf := s.category("11111111-1111-4111-8111-111111111111", "ColdFusion", "coldfusion")
+	go2 := s.category("22222222-2222-4222-8222-222222222222", "Go", "go")
+	e := s.entry(store.Entry{
+		ID: "77777777-7777-4777-8777-777777777777", Title: "Header Markup", Alias: "header-markup",
+		Body: "<p>Body.</p>", Posted: utc(2026, 4, 9, 11, 5), Username: "ray", Released: true,
+	})
+	s.categorise(e.ID, cf.ID, go2.ID)
+
+	body := s.getOK("/2026/4/9/header-markup")
+	header := headerBlock.FindString(body)
+	if header == "" {
+		t.Fatalf("no post-header block on the entry page:\n%s", body)
+	}
+	permalink := testBase + "/2026/4/9/header-markup"
+	for _, want := range []string{
+		`<h3 class="post-title"><a href="` + permalink + `">Header Markup</a></h3>`,
+		`<p class="post-date">`,
+		`<span class="month">Apr</span>`,
+		`<span class="day">9</span>`,
+		`<p class="post-author">`,
+		`posted by <a href="` + testBase + `/postedby/ray">ray</a> in `,
+		`<a href="` + testBase + `/coldfusion">ColdFusion</a>`,
+		`<a href="` + testBase + `/go">Go</a>`,
+		`| <a href="` + permalink + `#comments" class="comments">0 Comments</a>`,
+	} {
+		if !strings.Contains(header, want) {
+			t.Errorf("the entry header is missing %q:\n%s", want, header)
+		}
+	}
+	checkGolden(t, "entry_header.html", header)
+}
+
+// TestFP_P11_EntryFooterMetadataMarkup is P11: the footer line carries the
+// posted date and time, the view count, the comment count, a Print link,
+// and a Download link only when the entry has an enclosure.
+func TestFP_P11_EntryFooterMetadataMarkup(t *testing.T) {
+	s := newTestSite(t, nil)
+	s.user("ray", "Raymond Camden")
+	plain := s.entry(store.Entry{
+		ID: "33333333-3333-4333-8333-333333333333", Title: "No Attachment", Alias: "no-attachment",
+		Body: "<p>Body.</p>", Posted: utc(2026, 4, 10, 16, 45), Username: "ray", Released: true, Views: 7,
+	})
+	withFile := s.entry(store.Entry{
+		ID: "44444444-4444-4444-8444-444444444444", Title: "With Attachment", Alias: "with-attachment",
+		Body: "<p>Body.</p>", Posted: utc(2026, 4, 11, 8, 0), Username: "ray", Released: true, Views: 3,
+		Enclosure: "/data/enclosures/episode 12.mp3", FileSize: 1024, MimeType: "audio/mpeg",
+	})
+
+	meta := metadataBlock.FindString(s.getOK("/2026/4/10/no-attachment"))
+	if meta == "" {
+		t.Fatal("no post-metadata line on the entry without an enclosure")
+	}
+	if !strings.Contains(meta, "posted on April 10, 2026 at 4:45 PM and has received 7 views") {
+		t.Errorf("the metadata line does not read right:\n%s", meta)
+	}
+	if !strings.Contains(meta, `<a href="`+testBase+`/print/`+plain.ID+`" rel="nofollow">Print this entry.</a>`) {
+		t.Errorf("the metadata line has no print link:\n%s", meta)
+	}
+	if strings.Contains(meta, "Download") {
+		t.Errorf("an entry without an enclosure offers a download:\n%s", meta)
+	}
+	checkGolden(t, "entry_metadata_plain.html", meta)
+
+	meta = metadataBlock.FindString(s.getOK("/2026/4/11/with-attachment"))
+	if meta == "" {
+		t.Fatal("no post-metadata line on the entry with an enclosure")
+	}
+	want := `<a href="` + testBase + `/download/` + withFile.ID + `/episode%2012.mp3">Download attachment.</a>`
+	if !strings.Contains(meta, want) {
+		t.Errorf("the metadata line is missing %q:\n%s", want, meta)
+	}
+	checkGolden(t, "entry_metadata_enclosure.html", meta)
+}
+
+// TestFP_P26_LayoutTitleMetaRssLinkFrameBuster is P26: the head carries
+// the blog title with the mode's additional title, the description and
+// keywords from settings, an RSS alternate link titled with the blog, and
+// the frame buster the as-is layout ran on load.
+func TestFP_P26_LayoutTitleMetaRssLinkFrameBuster(t *testing.T) {
+	s := newTestSite(t, nil)
+	s.setSetting("blogtitle", "Ray's Blog")
+	s.setSetting("blogdescription", "A blog about ColdFusion.")
+	s.setSetting("blogkeywords", "coldfusion, blogcfc, go")
+	s.user("ray", "Raymond Camden")
+	s.entry(store.Entry{
+		ID: "55555555-5555-4555-8555-555555555555", Title: "Titled Entry", Alias: "titled-entry",
+		Body: "<p>Body.</p>", Posted: utc(2026, 4, 12, 10, 0), Username: "ray", Released: true,
+	})
+
+	home := headBlock.FindString(s.getOK("/"))
+	for _, want := range []string{
+		`<title>Ray&#39;s Blog</title>`,
+		`<meta name="description" content="A blog about ColdFusion." />`,
+		`<meta name="keywords" content="coldfusion, blogcfc, go" />`,
+		`<link rel="alternate" type="application/rss+xml" title="Ray&#39;s Blog" href="` + testBase + `/rss" />`,
+		`<link rel="stylesheet" type="text/css" href="` + testBase + `/static/css/site.css" />`,
+		"top.location = self.location",
+	} {
+		if !strings.Contains(home, want) {
+			t.Errorf("the head is missing %q:\n%s", want, home)
+		}
+	}
+	checkGolden(t, "head_home.html", home)
+
+	entry := headBlock.FindString(s.getOK("/2026/4/12/titled-entry"))
+	if !strings.Contains(entry, `<title>Ray&#39;s Blog - Titled Entry</title>`) {
+		t.Errorf("the entry head has no additional title:\n%s", entry)
+	}
+	checkGolden(t, "head_entry.html", entry)
 }

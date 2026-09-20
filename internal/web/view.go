@@ -3,7 +3,11 @@ package web
 import (
 	"html/template"
 	"net/http"
+	"net/url"
+	"path"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/4scottt/go-blogcfc/internal/store"
@@ -24,6 +28,18 @@ type pageData struct {
 	RSSURL     string
 	CSSURL     string
 	Version    string
+
+	// Sidebar is the rendered pods column, dropped into ul#sidebar by the
+	// layout. It is empty until main.go gives Module.Sidebar a renderer
+	// (the pods package); an empty value leaves the list empty, which is
+	// what M1 and every test without pods want.
+	Sidebar template.HTML
+
+	// Body is the seam for a page whose whole content is rendered before
+	// the template runs -- a static page, the print view, a search result
+	// summary. The entry templates do not use it; the packages that add
+	// those views set it and render it from their own "content" block.
+	Body template.HTML
 
 	// Entries is the listing; Single marks the one-entry view, where the
 	// body is followed by morebody instead of a [more] link.
@@ -74,6 +90,14 @@ type entryView struct {
 	Views        int
 	CommentCount int
 	CommentURL   string
+
+	// PrintURL is the entry's print view (PLAN §8 /print/{id}); the route
+	// itself arrives with the entry-completion package.
+	PrintURL string
+	// DownloadURL is /download/{id}/{file} for an entry with an enclosure,
+	// and empty for one without: the footer's Download link hangs off it
+	// (PLAN §9 P11).
+	DownloadURL string
 }
 
 // linkView is a label with a URL.
@@ -97,7 +121,16 @@ func (m *Module) newPage(r *http.Request, additionalTitle string) pageData {
 		RSSURL:          base + "/rss",
 		CSSURL:          base + "/static/css/site.css",
 		Version:         Version,
+		Sidebar:         m.sidebar(r),
 	}
+}
+
+// sidebar renders the pods column, or nothing when no renderer is set.
+func (m *Module) sidebar(r *http.Request) template.HTML {
+	if m.Sidebar == nil {
+		return ""
+	}
+	return m.Sidebar(r)
 }
 
 // entryViews renders a page of entries.
@@ -127,6 +160,8 @@ func (m *Module) entryViews(entries []store.Entry, single bool) []entryView {
 			PostedDate:   posted.Format("January 2, 2006"),
 			PostedTime:   posted.Format("3:04 PM"),
 			Views:        e.Views,
+			PrintURL:     base + "/print/" + url.PathEscape(e.ID),
+			DownloadURL:  downloadURL(base, e),
 		}
 		if single {
 			v.MoreBody = template.HTML(e.MoreBody) //nolint:gosec // as above
@@ -137,6 +172,17 @@ func (m *Module) entryViews(entries []store.Entry, single bool) []entryView {
 		out = append(out, v)
 	}
 	return out
+}
+
+// downloadURL is the enclosure's download link, empty when the entry has
+// no enclosure. BlogCFC stored a path and linked only its file name
+// (PLAN §8 /download/{id}/{file}).
+func downloadURL(base string, e store.Entry) string {
+	name := path.Base(filepath.ToSlash(strings.TrimSpace(e.Enclosure)))
+	if e.Enclosure == "" || name == "." || name == "/" {
+		return ""
+	}
+	return base + "/download/" + url.PathEscape(e.ID) + "/" + url.PathEscape(name)
 }
 
 // pager builds BlogCFC's previous/next links. They keep the SES path and

@@ -23,7 +23,12 @@
 {{- end}}
 {{- end}}
   <div class="clear"></div>
-  <p class="post-metadata">This entry was posted on {{.PostedDate}} at {{.PostedTime}} and has received {{.Views}} views. There are currently <a href="{{.CommentURL}}">{{.CommentCount}} comments</a>.</p>
+  <p class="post-metadata">This entry was posted on {{.PostedDate}} at {{.PostedTime}} and has received {{.Views}} views. There are currently {{.CommentCount}} comments.
+   <a href="{{.PrintURL}}" rel="nofollow">Print this entry.</a>
+{{- if .DownloadURL}}
+   <a href="{{.DownloadURL}}">Download attachment.</a>
+{{- end}}
+  </p>
  </div>
 </div>
 {{- end}}
