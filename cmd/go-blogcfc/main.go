@@ -38,6 +38,7 @@ import (
 	"github.com/4scottt/go-blogcfc/internal/release"
 	"github.com/4scottt/go-blogcfc/internal/store"
 	"github.com/4scottt/go-blogcfc/internal/web"
+	"github.com/4scottt/go-blogcfc/internal/xmlrpc"
 )
 
 const usage = `usage: go-blogcfc <serve|migrate|seed-admin|healthcheck>`
@@ -229,6 +230,9 @@ func serve() error {
 		return notifier.CommentApproved(ctx, e, c)
 	}
 	go releaser.Run(ctx, time.Minute)
+	xmlrpcModule := xmlrpc.New(cfg, st, settings)
+	xmlrpcModule.Cache = blogCache
+	xmlrpcModule.Release = releaser.OnEntrySaved
 	legacyModule := legacy.New(cfg)
 	sitemapModule := feeds.NewSitemap(cfg, st, settings)
 	rssModule := feeds.NewRSS(cfg, st, settings)
@@ -236,7 +240,7 @@ func serve() error {
 
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           app.New(cfg, st, settings, publicModule, podsModule, adminModule, legacyModule, sitemapModule, rssModule),
+		Handler:           app.New(cfg, st, settings, publicModule, podsModule, adminModule, legacyModule, sitemapModule, rssModule, xmlrpcModule),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,

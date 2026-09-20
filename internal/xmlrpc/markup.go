@@ -15,18 +15,21 @@ import (
 //     HTML-escaped, so the editor shows the code rather than running it;
 //   - on the way in (newPost, editPost) unescapeMarkup turns it back.
 //
-// The pair is the as-is's, including its greedy last-block-first loop; the
-// one thing not ported is its `<textblock\1>` backreference, which names
-// the `(<p>)` group and so wrote the paragraph tag into the tag it was
-// rebuilding. The attribute group is used here instead.
+// The pair is the as-is's, including its greedy last-block-first loop. Two
+// things are not ported literally: RE2 has no lookahead, so the CFML's
+// `[^\s]*(?=&gt;)` is a lazy `[^\s]*?` before the same `&gt;`, which
+// matches the same attribute run; and the
+// as-is's `<textblock\1>` backreference names the `(<p>)` group and so
+// wrote the paragraph tag into the tag it was rebuilding; the attribute
+// group is used here instead.
 
 const maxMarkupPasses = 64
 
 var (
 	// Escaped forms, going out: <code> to &lt;[code]&gt; and back.
-	reEscapedCodeTag      = regexp.MustCompile(`(?is)&lt;code((\s+[^\s]*(?=&gt;))|(\s*/))?&gt;`)
-	reEscapedMoreTag      = regexp.MustCompile(`(?is)&lt;more((\s+[^\s]*(?=&gt;))|(\s*/))?&gt;`)
-	reEscapedTextblockTag = regexp.MustCompile(`(?is)&lt;textblock((\s+[^\s]*(?=&gt;))|(\s*/))?&gt;`)
+	reEscapedCodeTag      = regexp.MustCompile(`(?is)&lt;code((\s+[^\s]*?)|(\s*/))?&gt;`)
+	reEscapedMoreTag      = regexp.MustCompile(`(?is)&lt;more((\s+[^\s]*?)|(\s*/))?&gt;`)
+	reEscapedTextblockTag = regexp.MustCompile(`(?is)&lt;textblock((\s+[^\s]*?)|(\s*/))?&gt;`)
 
 	reBracketCode      = regexp.MustCompile(`(?is)&lt;\[code((\s+[^\]]*)|(\s*/))?\]&gt;`)
 	reBracketMore      = regexp.MustCompile(`(?is)&lt;\[more((\s+[^\]]*)|(\s*/))?\]&gt;`)

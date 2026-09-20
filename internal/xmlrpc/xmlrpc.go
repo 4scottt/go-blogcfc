@@ -52,6 +52,13 @@ type Module struct {
 	// main.go sets it, and nil means nothing is cached.
 	Cache *cache.Cache
 
+	// Release runs the release side effects (subscriber mail, pings, the
+	// sweep's mark) after newPost/editPost, exactly as an admin save does
+	// through the same hook (PLAN §11 "Release side effects"). main.go sets
+	// it to the releaser's OnEntrySaved; nil means no side effects, which
+	// is what the tests want.
+	Release func(ctx context.Context, e *store.Entry, releasedBefore bool) error
+
 	cfg      *config.Config
 	store    *store.Store
 	settings *config.Settings

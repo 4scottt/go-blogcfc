@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -223,7 +224,13 @@ func (m *Module) savePost(r *request, editing bool) (any, error) {
 	// A draft published with a date already past is posted now, so it does
 	// not appear half way down the home page: the as-is's rule here and in
 	// admin/entry.cfm alike (PLAN §9 A06).
-	releasedBefore := existing != nil && existing.Released
+	// The as-is stood a missing entry in for `currentEntry` with
+	// `released = true`, so a brand new post keeps the date it was given
+	// and only a draft being published is moved forward.
+	releasedBefore := true
+	if existing != nil {
+		releasedBefore = existing.Released
+	}
 	if !releasedBefore && publish && (e.Posted.IsZero() || e.Posted.Before(time.Now().UTC())) {
 		e.Posted = time.Now().UTC().Truncate(time.Second)
 	}
@@ -255,6 +262,14 @@ func (m *Module) savePost(r *request, editing bool) (any, error) {
 	}
 
 	m.flush()
+	if m.Release != nil {
+		// A new post has no earlier state: releasedBefore is false for it
+		// (the admin passes the same for a new entry), so a first publish
+		// pings; the `posted = now` rule above kept the as-is's reading.
+		if err := m.Release(r.ctx, e, existing != nil && existing.Released); err != nil {
+			slog.Warn("xmlrpc: release side effects failed", "entry", e.ID, "error", err)
+		}
+	}
 	if editing {
 		return true, nil
 	}
