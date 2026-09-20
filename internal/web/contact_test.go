@@ -14,6 +14,10 @@ import (
 func TestFP_P21_ContactValidatesAndMailsOwnerWithRemoteAddress(t *testing.T) {
 	s := newExtraSite(t)
 	s.setSetting("owneremail", "owner@example.com")
+	// The arithmetic challenge is `usecaptcha`, which contact.cfm asked
+	// for too; this test posts without going through the form, so it is
+	// off here. TestFP_C05 covers the antispam block on this page.
+	s.setSetting("usecaptcha", "no")
 
 	// The form itself: every control named, the submit's own label.
 	form := s.getOK("/contact")

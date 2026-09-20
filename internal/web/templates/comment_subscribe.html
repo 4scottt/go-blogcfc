@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{.Title}}</title>
+<link rel="stylesheet" type="text/css" href="{{.CSSURL}}" />
+</head>
+<body id="popUpFormBody">
+<div class="date">{{.Heading}}</div>
+<div class="body">
+{{- if .AllowComments}}
+{{- if .Errors}}
+<div id="CommentError">
+ <b>{{.ErrorHeading}}:</b>
+ <ul class="error">
+{{- range .Errors}}
+  <li>{{.}}</li>
+{{- end}}
+ </ul>
+</div>
+{{- end}}
+<form action="{{.ActionURL}}" method="post" id="comment-subscribe-form">
+ <fieldset id="commentForm">
+  <legend>{{.Legend}}</legend>
+  <div>
+   <label for="email">{{.EmailLabel}}</label>
+   <input type="text" id="email" name="email" value="{{.Email}}" />
+  </div>
+  <div style="text-align:center">
+   <input type="submit" id="submit" name="addsub" value="{{.SubmitLabel}}" />
+  </div>
+ </fieldset>
+</form>
+{{- else}}
+<p class="commentsnotallowed">{{.NotAllowed}}</p>
+{{- end}}
+</div>
+</body>
+</html>

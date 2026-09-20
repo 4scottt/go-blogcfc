@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{.Title}}</title>
+<link rel="stylesheet" type="text/css" href="{{.CSSURL}}" />
+</head>
+<body id="{{.BodyID}}">
+<div class="date">{{.Heading}}</div>
+<div class="body">
+<p class="commentDone">{{.Message}}</p>
+{{- if .LinkURL}}
+<p class="commentDoneLink"><a href="{{.LinkURL}}">{{.LinkLabel}}</a></p>
+{{- end}}
+</div>
+{{- if .ClosePopup}}
+<script>
+if (window.opener && !window.opener.closed) {
+ window.opener.location.reload();
+ window.close();
+}
+</script>
+{{- end}}
+</body>
+</html>

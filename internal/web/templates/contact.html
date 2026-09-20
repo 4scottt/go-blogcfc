@@ -28,8 +28,18 @@
      <label for="comments">{{.CommentsLabel}}</label><br />
      <textarea id="comments" name="comments" rows="15" cols="45">{{.Comments}}</textarea>
     </div>
-    {{/* antispam: M3 -- the honeypot, the signed timestamp and the
-         challenge field go in this block (PLAN §11 "Antispam"). */}}
+    <div class="nofLoat" style="display:none" aria-hidden="true">
+     <label for="{{.HoneypotField}}">Leave this field empty</label>
+     <input type="text" id="{{.HoneypotField}}" name="{{.HoneypotField}}" value="" autocomplete="off" tabindex="-1" />
+    </div>
+    <input type="hidden" name="{{.StampField}}" value="{{.StampValue}}" />
+{{- if .Challenge}}
+    <div>
+     <input type="hidden" name="{{.TokenField}}" value="{{.ChallengeToken}}" />
+     <label for="{{.AnswerField}}">{{.ChallengeLabel}} <span id="challenge">{{.Challenge}}</span></label><br />
+     <input type="text" id="{{.AnswerField}}" name="{{.AnswerField}}" size="6" autocomplete="off" />
+    </div>
+{{- end}}
     <div>
      <input type="submit" id="submit" name="send" value="{{.SubmitLabel}}" />
     </div>

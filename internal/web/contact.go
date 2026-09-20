@@ -13,6 +13,7 @@ import (
 // contactPage is /contact.
 type contactPage struct {
 	pageData
+	formAntispam
 
 	Heading     string
 	Intro       string
@@ -57,6 +58,7 @@ func (m *Module) handleContact(w http.ResponseWriter, r *http.Request) {
 		NameLabel:     m.bundle.T("name"),
 		EmailLabel:    m.bundle.T("youremailaddress"),
 		CommentsLabel: m.bundle.T("comments"),
+		formAntispam:  m.antispamFields(r),
 	}
 
 	if r.Method != http.MethodPost && !r.Form.Has("send") {
@@ -73,10 +75,10 @@ func (m *Module) handleContact(w http.ResponseWriter, r *http.Request) {
 	if page.Comments == "" {
 		page.Errors = append(page.Errors, m.bundle.T("mustincludecomments"))
 	}
-	// antispam: M3 (PLAN §11 "Antispam"). The challenge - honeypot,
-	// signed timestamp, URL count and the word list - is the antispam
-	// package's, and its failures join page.Errors here. Until it lands
-	// the form carries the field and the checks are not made.
+	// The antispam block (PLAN §11 "Antispam"): the word list, then
+	// cfFormProtect's honeypot, timestamp and URL count, then the
+	// arithmetic challenge - none of it for a logged-in author.
+	page.Errors = append(page.Errors, m.antispamErrors(r, page.Comments, page.Name, page.Email)...)
 
 	if len(page.Errors) > 0 {
 		m.renderExtra(w, "contact.html", http.StatusOK, page)

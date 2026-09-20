@@ -62,6 +62,8 @@ jobs:
           WALK_URL: http://127.0.0.1:8081
           ADMIN_PASSWORD: admin
           WALK_BROWSER: chromium
+          WALK_STEPS: "7"
+          WALK_FEED: "0"   # the feed lands with M5
         run: node scripts/walk.mjs
       - name: app logs
         if: always()

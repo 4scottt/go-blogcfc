@@ -116,10 +116,15 @@ type entryView struct {
 	Comments      []commentView
 
 	// AddCommentURL and AddCommentLabel are the link to the comment form,
-	// and CommentsNotAllowed the string that stands in its place when the
-	// entry disallows comments (PLAN §9 P15). Exactly one is ever set.
+	// SubscribeURL and SubscribeLabel the one beside it to the thread
+	// subscription (index.cfm's second bracketed link, PLAN §9 C09), and
+	// CommentsNotAllowed the string that stands in the pair's place when
+	// the entry disallows comments (PLAN §9 P15). Either the two links
+	// are set or the message is, never both.
 	AddCommentURL      string
 	AddCommentLabel    string
+	SubscribeURL       string
+	SubscribeLabel     string
 	CommentsNotAllowed string
 }
 

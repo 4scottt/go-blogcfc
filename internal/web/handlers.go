@@ -30,6 +30,19 @@ type listing struct {
 // with no id falls back to the home listing, as getmode.cfm does.
 func (m *Module) handleHome(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	// The owner's one-click links out of a comment notification
+	// (PLAN §8, §9 C11). BlogApplication.cfc ran both in onRequestStart,
+	// before anything else and without asking who was calling: the kill
+	// token is the credential, and the approve link is only ever mailed
+	// to the owner. Both answer with a line saying what happened.
+	if token := strings.TrimSpace(q.Get("killcomment")); token != "" {
+		m.killComment(w, r, token)
+		return
+	}
+	if id := strings.TrimSpace(q.Get("approvecomment")); id != "" {
+		m.approveComment(w, r, id)
+		return
+	}
 	switch strings.ToLower(strings.TrimSpace(q.Get("mode"))) {
 	case "entry":
 		if id := strings.TrimSpace(q.Get("entry")); id != "" {
@@ -338,6 +351,8 @@ func (m *Module) decorateEntry(ctx context.Context, v *entryView, e *store.Entry
 	if e.AllowComments {
 		v.AddCommentLabel = m.bundle.T("addcomment")
 		v.AddCommentURL = m.base() + "/comments/add/" + url.PathEscape(e.ID)
+		v.SubscribeLabel = m.bundle.T("addsub")
+		v.SubscribeURL = m.base() + "/comments/subscribe/" + url.PathEscape(e.ID)
 		return
 	}
 	v.CommentsNotAllowed = m.bundle.T("commentsnotallowed")

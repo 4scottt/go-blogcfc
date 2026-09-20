@@ -45,7 +45,7 @@
 <a name="comments"></a>
 <h3 class="commentHeader">{{.CommentHeader}}</h3>
 {{- if .AddCommentURL}}
-<div class="addCommentLink">[<a href="{{.AddCommentURL}}">{{.AddCommentLabel}}</a>]</div>
+<div class="addCommentLink">[<a href="{{.AddCommentURL}}">{{.AddCommentLabel}}</a>] [<a href="{{.SubscribeURL}}">{{.SubscribeLabel}}</a>]</div>
 {{- end}}
 <ul id="comments">
 {{- range .Comments}}

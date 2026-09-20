@@ -25,6 +25,7 @@ var (
 // sendPage is /send/{id}.
 type sendPage struct {
 	pageData
+	formAntispam
 
 	Heading     string
 	Intro       string
@@ -102,6 +103,7 @@ func (m *Module) handleSend(w http.ResponseWriter, r *http.Request) {
 		EmailLabel:   m.bundle.T("youremailaddress"),
 		REmailLabel:  m.bundle.T("receiveremailaddress"),
 		NotesLabel:   m.bundle.T("optionalnotes"),
+		formAntispam: m.antispamFields(r),
 	}
 
 	if r.Method != http.MethodPost && !r.Form.Has("send") {
@@ -115,7 +117,8 @@ func (m *Module) handleSend(w http.ResponseWriter, r *http.Request) {
 	if !looksLikeEmail(page.REmail) {
 		page.Errors = append(page.Errors, m.bundle.T("mustincludereceiveremail"))
 	}
-	// antispam: M3 (PLAN §11 "Antispam"), as on the contact form.
+	// The antispam block, as on the contact form (PLAN §11 "Antispam").
+	page.Errors = append(page.Errors, m.antispamErrors(r, page.Notes, page.Email, page.REmail)...)
 
 	if len(page.Errors) > 0 {
 		m.renderExtra(w, "send.html", http.StatusOK, page)

@@ -18,6 +18,9 @@ func TestFP_P22_SendEntryValidatesMailsRecipientCcOwner(t *testing.T) {
 	s := newExtraSite(t)
 	s.setSetting("owneremail", "owner@example.com")
 	s.setSetting("blogtitle", "Raymond Camden's Blog")
+	// As in the contact test: this one posts without fetching the form,
+	// so the challenge send.cfm also asked for is off.
+	s.setSetting("usecaptcha", "no")
 	s.author("ray", "Raymond Camden")
 	now := time.Now().UTC().Truncate(time.Second)
 

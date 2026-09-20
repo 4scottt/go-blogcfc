@@ -32,7 +32,9 @@ import (
 	"github.com/4scottt/go-blogcfc/internal/legacy"
 	"github.com/4scottt/go-blogcfc/internal/mail"
 	"github.com/4scottt/go-blogcfc/internal/migrate"
+	"github.com/4scottt/go-blogcfc/internal/notify"
 	"github.com/4scottt/go-blogcfc/internal/pods"
+	"github.com/4scottt/go-blogcfc/internal/release"
 	"github.com/4scottt/go-blogcfc/internal/store"
 	"github.com/4scottt/go-blogcfc/internal/web"
 )
@@ -202,6 +204,22 @@ func serve() error {
 	publicModule.Mail = sender
 	podsModule := pods.New(cfg, st, settings, sender)
 	publicModule.Sidebar = podsModule.Sidebar
+
+	// Release side effects (mail subscribers, pings, the sweep for scheduled
+	// entries) and comment notifications, hooked into the admin.
+	releaser := release.New(cfg, st, settings, sender, nil)
+	notifier := notify.New(cfg, st, settings, sender)
+	notifier.Link = func(e store.Entry) string { return web.EntryURL(cfg.BlogBaseURL, e, settings.Timezone()) }
+	adminModule.Mail = sender
+	adminModule.Release = releaser.OnEntrySaved
+	adminModule.Notify = func(ctx context.Context, e *store.Entry, c *store.Comment, adminOnly bool) (int, error) {
+		if adminOnly {
+			return notifier.Comment(ctx, e, c, true)
+		}
+		// C12: approving tells the thread, not the owner who approved.
+		return notifier.CommentApproved(ctx, e, c)
+	}
+	go releaser.Run(ctx, time.Minute)
 	legacyModule := legacy.New(cfg)
 	sitemapModule := feeds.NewSitemap(cfg, st, settings)
 
