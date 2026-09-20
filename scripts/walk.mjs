@@ -55,7 +55,7 @@ try {
   page.on("requestfailed", (r) => { if (new URL(r.url()).host === own) problems.push(`${r.failure()?.errorText || "failed"}: ${r.url()}`); });
   page.on("response", (r) => { if (r.status() >= 400 && r.request().resourceType() !== "document" && new URL(r.url()).host === own) problems.push(`${r.status()}: ${r.url()}`); });
   page.on("console", (m) => { if (m.type() === "error") problems.push(`console: ${m.text().slice(0, 200)} (${m.location()?.url || "no url"})`); });
-  page.on("pageerror", (e) => problems.push(`page: ${String(e).slice(0, 200)}`));
+  page.on("pageerror", (e) => problems.push(`page error at ${page.url()}: ${String(e.stack || e).split("\n").slice(0, 2).join(" | ").slice(0, 300)}`));
   page.setDefaultTimeout(30_000);
 
   console.log(`go-blogcfc walk against ${url}`);
